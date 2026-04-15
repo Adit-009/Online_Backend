@@ -11,6 +11,7 @@ const path = require('path');
 const seedAdmin = require('./utils/seedAdmin');
 
 const connectDB = require('./config/database');
+connectDB();
 const app = express();
 const isProd = process.env.NODE_ENV === 'production';
 
