@@ -13,16 +13,20 @@ const app = express();
 const isProd = process.env.NODE_ENV === 'production';
 
 // ── CORS ──────────────────────────────────────────────────────────────
-const allowedOrigins = process.env.FRONTEND_URL
-  ? [process.env.FRONTEND_URL]
-  : ['http://onlinefullstack.netlify.app'];
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://onlinefullstack.netlify.app'
+];
 
 app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
-    return callback(new Error('Not allowed by CORS'));
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
   },
-  credentials: true,
+  credentials: true
 }));
 
 // ── CORE MIDDLEWARE ───────────────────────────────────────────────────
