@@ -1,45 +1,119 @@
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
 
-const authMiddleware = async (req, res, next) => {
+require('dotenv').config();
+
+const express = require('express');
+const cors = require('cors');
+const compression = require('compression');
+const morgan = require('morgan');
+const cookieParser = require('cookie-parser');
+const rateLimit = require('express-rate-limit');
+const path = require('path');
+const connectDB = require('./config/database');
+const seedAdmin = require('./utils/seedAdmin');
+
+const app = express();
+const isProd = process.env.NODE_ENV === 'production';
+
+// ── CORS ──────────────────────────────────────────────────────────────
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://onlinefullstack.netlify.app'
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS blocked'));
+    }
+  },
+  credentials: true
+}));
+
+// ── CORE MIDDLEWARE ───────────────────────────────────────────────────
+app.use(compression());
+app.use(morgan(isProd ? 'combined' : 'dev'));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cookieParser());
+
+// ── RATE LIMITING ─────────────────────────────────────────────────────
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 20,
+  message: { error: 'Too many requests, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  message: { error: 'Too many requests, please try again later.' },
+});
+
+app.use('/api/auth', authLimiter);
+app.use('/api/', apiLimiter);
+
+// ── ROUTES ────────────────────────────────────────────────────────────
+app.use('/api/auth', require('./routes/authRoutes'));
+app.use('/api/courses', require('./routes/courseRoutes'));
+app.use('/api/enrollments', require('./routes/enrollmentRoutes'));
+app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/leaderboard', require('./routes/leaderboardRoutes'));
+app.use('/api/exams', require('./routes/examRoutes'));
+app.use('/api/doubt-sessions', require('./routes/doubtSessionRoutes'));
+app.use('/api/admin', require('./routes/adminRoutes2'));
+
+// ── HEALTH CHECK ──────────────────────────────────────────────────────
+app.get('/api/health', (req, res) => {
   try {
-    // Check for token in cookies first, then in Authorization header
-    let token = req.cookies.access_token;
-    
-    if (!token) {
-      const authHeader = req.headers.authorization;
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        token = authHeader.substring(7);
-      }
-    }
-
-    if (!token) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    
-    const user = await User.findById(decoded.userId).select('-password');
-    if (!user) {
-      return res.status(401).json({ error: 'User not found' });
-    }
-
-    req.user = user;
-    next();
-  } catch (error) {
-    if (error.name === 'TokenExpiredError') {
-      return res.status(401).json({ error: 'Token expired' });
-    }
-    return res.status(401).json({ error: 'Invalid token' });
+    res.json({ status: 'ok', message: 'Third Eye Education Platform API is running' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
   }
-};
+});
 
-const adminMiddleware = async (req, res, next) => {
-  if (req.user && req.user.role === 'admin') {
-    next();
+// ── SERVE FRONTEND (PRODUCTION) ───────────────────────────────────────
+const frontendBuildPath = path.join(__dirname, '../frontend/build');
+app.use(express.static(frontendBuildPath));
+
+// 404 for unknown API routes
+app.use('/api/*', (req, res) => {
+  res.status(404).json({ error: `Route ${req.originalUrl} not found` });
+});
+
+// SPA catch-all
+app.get('*', (req, res) => {
+  res.sendFile(path.join(frontendBuildPath, 'index.html'));
+});
+
+// ── GLOBAL ERROR HANDLER ──────────────────────────────────────────────
+app.use((err, req, res, next) => {
+  if (isProd) {
+    res.status(err.status || 500).json({ error: 'Internal Server Error' });
   } else {
-    res.status(403).json({ error: 'Access denied. Admin only.' });
+    console.error(err.stack);
+    res.status(err.status || 500).json({ error: err.message || 'Something went wrong' });
+  }
+});
+
+// ── START ─────────────────────────────────────────────────────────────
+const PORT = process.env.PORT || 8005;
+
+const startServer = async () => {
+  try {
+    await connectDB();
+    await seedAdmin();
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`✅ Server running on port ${PORT} [${isProd ? 'production' : 'development'}]`);
+    });
+  } catch (error) {
+    console.error('❌ Failed to start server:', error);
+    process.exit(1);
   }
 };
 
-module.exports = { authMiddleware, adminMiddleware };
+startServer();

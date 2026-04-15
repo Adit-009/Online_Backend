@@ -1,7 +1,5 @@
 
 require('dotenv').config();
-console.log("MONGO_URI:", process.env.MONGO_URI);
-console.log("JWT_SECRET:", process.env.JWT_SECRET);
 
 const express = require('express');
 const cors = require('cors');
@@ -27,7 +25,7 @@ app.use(cors({
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      callback(new Error('CORS blocked'));
     }
   },
   credentials: true
