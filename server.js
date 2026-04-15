@@ -15,7 +15,7 @@ const isProd = process.env.NODE_ENV === 'production';
 // ── CORS ──────────────────────────────────────────────────────────────
 const allowedOrigins = process.env.FRONTEND_URL
   ? [process.env.FRONTEND_URL]
-  : ['http://localhost:3000', 'http://127.0.0.1:3000'];
+  : ['http://onlinefullstack.netlify.app'];
 
 app.use(cors({
   origin: (origin, callback) => {
