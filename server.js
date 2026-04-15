@@ -1,4 +1,8 @@
-require('dotenv').config({ path: '.env.node' });
+
+require('dotenv').config();
+console.log("MONGO_URI:", process.env.MONGO_URI);
+console.log("JWT_SECRET:", process.env.JWT_SECRET);
+
 const express = require('express');
 const cors = require('cors');
 const compression = require('compression');
