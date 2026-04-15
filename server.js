@@ -8,8 +8,8 @@ const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
-const connectDB = require('./config/database');
-const seedAdmin = require('./utils/seedAdmin');
+const connectDB = require('../config/database');
+const seedAdmin = require('../utils/seedAdmin');
 
 const app = express();
 const isProd = process.env.NODE_ENV === 'production';

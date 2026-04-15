@@ -23,7 +23,7 @@ const seedAdmin = async () => {
     // Write test credentials to a safe local path
     // Using process.cwd() ensures it works on Windows and Linux
     const credentialsPath = path.join(process.cwd(), 'temp_credentials.md');
-    
+
     const credentials = `# Test Credentials
 
 ## Admin Account
@@ -39,7 +39,7 @@ const seedAdmin = async () => {
 `;
 
     fs.writeFileSync(credentialsPath, credentials);
-    
+
   } catch (error) {
     console.error('Error seeding admin:', error);
   }
