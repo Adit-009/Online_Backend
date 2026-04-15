@@ -66,7 +66,12 @@ app.use('/api/admin', require('./routes/adminRoutes2'));
 
 // ── HEALTH CHECK ──────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Third Eye Education Platform API is running' });
+  try {
+    res.json({ status: 'ok', message: 'Third Eye Education Platform API is running' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ── SERVE FRONTEND (PRODUCTION) ───────────────────────────────────────
