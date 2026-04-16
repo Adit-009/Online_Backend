@@ -1,4 +1,5 @@
-const jwt = require('jsonwebtoken');
+const jwt    = require('jsonwebtoken');
+const isProd = process.env.NODE_ENV === 'production';
 
 const generateAccessToken = (userId, email) => {
   return jwt.sign(
@@ -17,26 +18,22 @@ const generateRefreshToken = (userId) => {
 };
 
 const setAuthCookies = (res, accessToken, refreshToken) => {
-  res.cookie('access_token', accessToken, {
+  const cookieOpts = (maxAge) => ({
     httpOnly: true,
-    secure: false,
-    sameSite: 'lax',
-    maxAge: 15 * 60 * 1000,
+    secure: isProd,              // true on Render (HTTPS), false locally
+    sameSite: isProd ? 'none' : 'lax', // 'none' required for cross-origin on HTTPS
+    maxAge,
     path: '/'
   });
-  
-  res.cookie('refresh_token', refreshToken, {
-    httpOnly: true,
-    secure: false,
-    sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000,
-    path: '/'
-  });
+
+  res.cookie('access_token',  accessToken,  cookieOpts(15 * 60 * 1000));
+  res.cookie('refresh_token', refreshToken, cookieOpts(7 * 24 * 60 * 60 * 1000));
 };
 
 const clearAuthCookies = (res) => {
-  res.clearCookie('access_token', { path: '/' });
-  res.clearCookie('refresh_token', { path: '/' });
+  const clearOpts = { path: '/', httpOnly: true, secure: isProd, sameSite: isProd ? 'none' : 'lax' };
+  res.clearCookie('access_token',  clearOpts);
+  res.clearCookie('refresh_token', clearOpts);
 };
 
 module.exports = {

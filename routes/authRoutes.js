@@ -167,11 +167,12 @@ router.post('/refresh', async (req, res) => {
     }
 
     const accessToken = generateAccessToken(user._id, user.email);
+    const isProd = process.env.NODE_ENV === 'production';
 
     res.cookie('access_token', accessToken, {
       httpOnly: true,
-      secure: false,
-      sameSite: 'lax',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
       maxAge: 15 * 60 * 1000,
       path: '/'
     });
@@ -179,6 +180,48 @@ router.post('/refresh', async (req, res) => {
     res.json({ message: 'Token refreshed' });
   } catch (error) {
     res.status(401).json({ error: 'Invalid refresh token' });
+  }
+});
+
+// ── PUBLIC: Check if any admin exists ─────────────────────────────────
+router.get('/admin-exists', async (req, res) => {
+  try {
+    const adminExists = await User.exists({ role: 'admin' });
+    res.json({ exists: !!adminExists });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to check admin status' });
+  }
+});
+
+// ── PUBLIC: First-time admin setup (only works if NO admin exists) ─────
+router.post('/setup-admin', async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'Name, email and password are required' });
+    }
+
+    const adminExists = await User.exists({ role: 'admin' });
+    if (adminExists) {
+      return res.status(403).json({ error: 'Admin already exists. This setup endpoint is disabled.' });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const admin = await User.create({
+      name,
+      email: email.toLowerCase(),
+      password: hashedPassword,
+      role: 'admin'
+    });
+
+    res.status(201).json({
+      message: 'Admin created successfully. Please log in.',
+      admin: { _id: admin._id, name: admin.name, email: admin.email, role: 'admin' }
+    });
+  } catch (error) {
+    console.error('Setup admin error:', error);
+    res.status(500).json({ error: 'Failed to create admin' });
   }
 });
 
