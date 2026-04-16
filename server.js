@@ -17,11 +17,8 @@ const seedAdmin  = require('@utils/seedAdmin');
 const app    = express();
 const isProd = process.env.NODE_ENV === 'production';
 
-// Trust proxy is required for rate limiting to work correctly behind 
-// platforms like Render, Netlify, or Heroku
-if (isProd) {
-    app.set('trust proxy', 1);
-}
+// Enable trust proxy to correctly detect client IPs behind Render/Netlify
+app.set('trust proxy', 1);
 
 // ── CORS ──────────────────────────────────────────────────────────────
 const allowedOrigins = [
