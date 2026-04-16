@@ -27,8 +27,8 @@ router.post('/register', async (req, res) => {
     // Referral Logic
     let referredByUser = null;
     if (referralCode && referralCode.trim()) {
-      referredByUser = await User.findOne({ 
-        referralCode: referralCode.trim().toUpperCase() 
+      referredByUser = await User.findOne({
+        referralCode: referralCode.trim().toUpperCase()
       });
 
       // Prevent self-referral (check if the referrer has the same email or phone)
@@ -149,14 +149,14 @@ router.post('/logout', authMiddleware, (req, res) => {
 router.post('/refresh', async (req, res) => {
   try {
     const refreshToken = req.cookies.refresh_token;
-    
+
     if (!refreshToken) {
       return res.status(401).json({ error: 'No refresh token' });
     }
 
     const jwt = require('jsonwebtoken');
     const decoded = jwt.verify(refreshToken, process.env.JWT_SECRET);
-    
+
     if (decoded.type !== 'refresh') {
       return res.status(401).json({ error: 'Invalid token type' });
     }
@@ -167,7 +167,7 @@ router.post('/refresh', async (req, res) => {
     }
 
     const accessToken = generateAccessToken(user._id, user.email);
-    
+
     res.cookie('access_token', accessToken, {
       httpOnly: true,
       secure: false,
