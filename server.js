@@ -17,6 +17,12 @@ const seedAdmin  = require('@utils/seedAdmin');
 const app    = express();
 const isProd = process.env.NODE_ENV === 'production';
 
+// Trust proxy is required for rate limiting to work correctly behind 
+// platforms like Render, Netlify, or Heroku
+if (isProd) {
+    app.set('trust proxy', 1);
+}
+
 // ── CORS ──────────────────────────────────────────────────────────────
 const allowedOrigins = [
   'http://localhost:3000',
@@ -44,7 +50,7 @@ app.use(cookieParser());
 // ── RATE LIMITING ─────────────────────────────────────────────────────
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20,
+  max: 100, // Increased from 20 for school/shared IP environments
   message: { error: 'Too many requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -52,7 +58,7 @@ const authLimiter = rateLimit({
 
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 200,
+  max: 500, // Increased from 200
   message: { error: 'Too many requests, please try again later.' },
 });
 
