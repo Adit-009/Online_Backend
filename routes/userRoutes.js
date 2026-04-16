@@ -1,10 +1,10 @@
-const express = require('express');
-const router = express.Router();
-const User = require('../models/User');
-const Enrollment = require('../models/Enrollment');
-const ActivityLog = require('../models/ActivityLog');
-const { authMiddleware } = require('../middleware/authMiddleware');
-const { generateReferralCode } = require('../utils/referralUtils');
+const express     = require('express');
+const router      = express.Router();
+const User        = require('@models/User');
+const Enrollment  = require('@models/Enrollment');
+const ActivityLog = require('@models/ActivityLog');
+const { authMiddleware }       = require('@middleware/authMiddleware');
+const { generateReferralCode } = require('@utils/referralUtils');
 
 // Get Unified Dashboard Data
 router.get('/dashboard', authMiddleware, async (req, res) => {

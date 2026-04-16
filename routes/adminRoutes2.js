@@ -1,14 +1,14 @@
-const express = require('express');
-const router = express.Router();
-const Course = require('../models/Course');
-const User = require('../models/User');
-const Enrollment = require('../models/Enrollment');
-const ActivityLog = require('../models/ActivityLog');
-const Exam = require('../models/Exam');
-const DoubtSession = require('../models/DoubtSession');
-const { authMiddleware, adminMiddleware } = require('../middleware/authMiddleware');
-const { sendEmail, emailTemplates } = require('../utils/emailService');
-const { generateReferralCode, processReferralReward } = require('../utils/referralUtils');
+const express      = require('express');
+const router       = express.Router();
+const Course       = require('@models/Course');
+const User         = require('@models/User');
+const Enrollment   = require('@models/Enrollment');
+const ActivityLog  = require('@models/ActivityLog');
+const Exam         = require('@models/Exam');
+const DoubtSession = require('@models/DoubtSession');
+const { authMiddleware, adminMiddleware }          = require('@middleware/authMiddleware');
+const { sendEmail, emailTemplates }               = require('@utils/emailService');
+const { generateReferralCode, processReferralReward } = require('@utils/referralUtils');
 
 // Apply auth and admin middleware to all routes
 router.use(authMiddleware);
@@ -292,7 +292,7 @@ router.get('/referral-reports', async (req, res) => {
 // Suspicious Referral Activities
 router.get('/suspicious-referrals', async (req, res) => {
   try {
-    const ActivityLog = require('../models/ActivityLog');
+    const ActivityLog = require('@models/ActivityLog');
     const logs = await ActivityLog.find({ 
       activityType: 'suspicious_attempt' 
     })

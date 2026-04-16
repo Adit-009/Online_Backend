@@ -1,9 +1,9 @@
-const express = require('express');
-const router = express.Router();
-const User = require('../models/User');
-const Enrollment = require('../models/Enrollment');
-const ActivityLog = require('../models/ActivityLog');
-const { authMiddleware } = require('../middleware/authMiddleware');
+const express     = require('express');
+const router      = express.Router();
+const User        = require('@models/User');
+const Enrollment  = require('@models/Enrollment');
+const ActivityLog = require('@models/ActivityLog');
+const { authMiddleware } = require('@middleware/authMiddleware');
 
 
 // GET Leaderboard Data (Public/Private)

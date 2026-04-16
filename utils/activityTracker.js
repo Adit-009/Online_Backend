@@ -1,5 +1,5 @@
-const ActivityLog = require('../models/ActivityLog');
-const User = require('../models/User');
+const ActivityLog = require('@models/ActivityLog');
+const User        = require('@models/User');
 
 const trackActivity = async (userId, activityType, courseId = null, description = '') => {
   try {

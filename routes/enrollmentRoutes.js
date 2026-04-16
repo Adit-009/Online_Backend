@@ -1,12 +1,13 @@
-const express = require('express');
-const router = express.Router();
-const bcrypt = require('bcryptjs');
-const Enrollment = require('../models/Enrollment');
-const Course = require('../models/Course');
-const User = require('../models/User');
-const { authMiddleware } = require('../middleware/authMiddleware');
-const { generateAccessToken, generateRefreshToken, setAuthCookies } = require('../utils/jwtUtils');
-const { sendEmail, emailTemplates } = require('../utils/emailService');
+const express    = require('express');
+const router     = express.Router();
+const bcrypt     = require('bcryptjs');
+const Enrollment = require('@models/Enrollment');
+const Course     = require('@models/Course');
+const User       = require('@models/User');
+const { authMiddleware }                                     = require('@middleware/authMiddleware');
+const { generateAccessToken, generateRefreshToken,
+        setAuthCookies }                                     = require('@utils/jwtUtils');
+const { sendEmail, emailTemplates }                          = require('@utils/emailService');
 
 // Public enrollment endpoint - register + enroll in one step
 router.post('/enroll', async (req, res) => {
@@ -40,7 +41,7 @@ router.post('/enroll', async (req, res) => {
         }
       }
 
-      const { generateReferralCode } = require('../utils/referralUtils');
+      const { generateReferralCode } = require('@utils/referralUtils');
       const newReferralCode = generateReferralCode(name);
 
       user = await User.create({

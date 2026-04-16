@@ -1,9 +1,9 @@
-const express = require('express');
-const router = express.Router();
-const Course = require('../models/Course');
-const Enrollment = require('../models/Enrollment');
-const { authMiddleware } = require('../middleware/authMiddleware');
-const { trackActivity } = require('../utils/activityTracker');
+const express    = require('express');
+const router     = express.Router();
+const Course     = require('@models/Course');
+const Enrollment = require('@models/Enrollment');
+const { authMiddleware } = require('@middleware/authMiddleware');
+const { trackActivity }  = require('@utils/activityTracker');
 
 // Get all active courses
 router.get('/', async (req, res) => {

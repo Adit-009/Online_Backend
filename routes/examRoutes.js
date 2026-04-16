@@ -1,10 +1,10 @@
-const express = require('express');
-const router = express.Router();
-const Exam = require('../models/Exam');
-const Enrollment = require('../models/Enrollment');
-const User = require('../models/User');
-const { authMiddleware } = require('../middleware/authMiddleware');
-const { sendEmail, emailTemplates } = require('../utils/emailService');
+const express    = require('express');
+const router     = express.Router();
+const Exam       = require('@models/Exam');
+const Enrollment = require('@models/Enrollment');
+const User       = require('@models/User');
+const { authMiddleware }     = require('@middleware/authMiddleware');
+const { sendEmail, emailTemplates } = require('@utils/emailService');
 
 // Get all upcoming exams for a course
 router.get('/course/:courseId', authMiddleware, async (req, res) => {

@@ -1,17 +1,20 @@
 
+require('module-alias/register');  // ← MUST be the very first line
+
 require('dotenv').config();
 
-const express = require('express');
-const cors = require('cors');
-const compression = require('compression');
-const morgan = require('morgan');
+const express      = require('express');
+const cors         = require('cors');
+const compression  = require('compression');
+const morgan       = require('morgan');
 const cookieParser = require('cookie-parser');
-const rateLimit = require('express-rate-limit');
-const path = require('path');
-const connectDB = require('./config/database');
-const seedAdmin = require('./utils/seedAdmin');
+const rateLimit    = require('express-rate-limit');
+const path         = require('path');
 
-const app = express();
+const connectDB  = require('@config/database');
+const seedAdmin  = require('@utils/seedAdmin');
+
+const app    = express();
 const isProd = process.env.NODE_ENV === 'production';
 
 // ── CORS ──────────────────────────────────────────────────────────────
@@ -57,14 +60,14 @@ app.use('/api/auth', authLimiter);
 app.use('/api/', apiLimiter);
 
 // ── ROUTES ────────────────────────────────────────────────────────────
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/courses', require('./routes/courseRoutes'));
-app.use('/api/enrollments', require('./routes/enrollmentRoutes'));
-app.use('/api/users', require('./routes/userRoutes'));
-app.use('/api/leaderboard', require('./routes/leaderboardRoutes'));
-app.use('/api/exams', require('./routes/examRoutes'));
-app.use('/api/doubt-sessions', require('./routes/doubtSessionRoutes'));
-app.use('/api/admin', require('./routes/adminRoutes2'));
+app.use('/api/auth',           require('@routes/authRoutes'));
+app.use('/api/courses',        require('@routes/courseRoutes'));
+app.use('/api/enrollments',    require('@routes/enrollmentRoutes'));
+app.use('/api/users',          require('@routes/userRoutes'));
+app.use('/api/leaderboard',    require('@routes/leaderboardRoutes'));
+app.use('/api/exams',          require('@routes/examRoutes'));
+app.use('/api/doubt-sessions', require('@routes/doubtSessionRoutes'));
+app.use('/api/admin',          require('@routes/adminRoutes2'));
 
 // ── HEALTH CHECK ──────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {

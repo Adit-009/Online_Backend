@@ -18,9 +18,9 @@ const connectDB = async () => {
 
 const createIndexes = async () => {
   try {
-    const User = require('../models/User');
-    const Enrollment = require('../models/Enrollment');
-    const Course = require('../models/Course');
+    const User       = require('@models/User');
+    const Enrollment = require('@models/Enrollment');
+    const Course     = require('@models/Course');
 
     // Check if models are available (prevents circular dependency issues during startup)
     if (User && User.collection) {

@@ -1,11 +1,11 @@
 const express = require('express');
-const router = express.Router();
-const bcrypt = require('bcryptjs');
-const User = require('../models/User');
-const { generateAccessToken, generateRefreshToken, setAuthCookies, clearAuthCookies } = require('../utils/jwtUtils');
-const { authMiddleware } = require('../middleware/authMiddleware');
-const { trackActivity } = require('../utils/activityTracker');
-const { generateReferralCode } = require('../utils/referralUtils');
+const router  = express.Router();
+const bcrypt  = require('bcryptjs');
+const User    = require('@models/User');
+const { generateAccessToken, generateRefreshToken, setAuthCookies, clearAuthCookies } = require('@utils/jwtUtils');
+const { authMiddleware }    = require('@middleware/authMiddleware');
+const { trackActivity }     = require('@utils/activityTracker');
+const { generateReferralCode } = require('@utils/referralUtils');
 
 // Register
 router.post('/register', async (req, res) => {
@@ -34,7 +34,7 @@ router.post('/register', async (req, res) => {
       // Prevent self-referral (check if the referrer has the same email or phone)
       if (referredByUser && (referredByUser.email === email.toLowerCase() || referredByUser.phone === phone)) {
         // Track suspicious self-referral attempt
-        const { trackActivity } = require('../utils/activityTracker');
+        const { trackActivity } = require('@utils/activityTracker');
         // Since the user is not created yet, we log it slightly differently or wait, 
         // but we can at least return an error to block the abuse.
         return res.status(400).json({ error: 'Self-referral is not allowed. Please use a valid referral code or leave it blank.' });

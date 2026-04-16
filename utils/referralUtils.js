@@ -1,5 +1,5 @@
-const User = require('../models/User');
-const { trackActivity } = require('./activityTracker');
+const User              = require('@models/User');
+const { trackActivity } = require('@utils/activityTracker');
 
 const generateReferralCode = (name) => {
   if (!name) return `USER${Math.floor(1000 + Math.random() * 9000)}`;
