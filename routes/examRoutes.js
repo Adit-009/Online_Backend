@@ -1,4 +1,5 @@
 const express    = require('express');
+const mongoose   = require('mongoose');
 const router     = express.Router();
 const Exam       = require('@models/Exam');
 const Enrollment = require('@models/Enrollment');
@@ -9,9 +10,13 @@ const { sendEmail, emailTemplates } = require('@utils/emailService');
 // Get all upcoming exams for a course
 router.get('/course/:courseId', authMiddleware, async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.courseId)) {
+      return res.json([]); // Return empty list for invalid ID
+    }
     const exams = await Exam.find({ courseId: req.params.courseId }).sort({ date: 1 });
     res.json(exams);
   } catch (error) {
+    console.error('[BACKEND] GET exams by course error:', error);
     res.status(500).json({ error: 'Failed to fetch exams' });
   }
 });

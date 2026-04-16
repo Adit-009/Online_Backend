@@ -21,6 +21,7 @@ router.get('/exams', async (req, res) => {
     const exams = await Exam.find().populate('courseId', 'title').populate('enrolledStudents.userId', 'name email').sort({ date: 1 });
     res.json(exams);
   } catch (error) {
+    console.error('[ADMIN] GET exams error:', error);
     res.status(500).json({ error: 'Failed to fetch exams' });
   }
 });
@@ -557,6 +558,7 @@ router.get('/doubt-sessions', async (req, res) => {
     const sessions = await DoubtSession.find().populate('courseId', 'title').populate('participants', 'name email').sort({ date: 1 });
     res.json(sessions);
   } catch (error) {
+    console.error('[ADMIN] GET doubt sessions error:', error);
     res.status(500).json({ error: 'Failed to fetch doubt sessions' });
   }
 });

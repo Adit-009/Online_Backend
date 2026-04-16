@@ -1,4 +1,5 @@
 const express      = require('express');
+const mongoose     = require('mongoose');
 const router       = express.Router();
 const DoubtSession = require('@models/DoubtSession');
 const User         = require('@models/User');
@@ -9,13 +10,21 @@ const { sendEmail, emailTemplates } = require('@utils/emailService');
 // Get all upcoming doubt sessions for a course
 router.get('/course/:courseId', authMiddleware, async (req, res) => {
   try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.courseId)) {
+      return res.json([]);
+    }
+
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
     const sessions = await DoubtSession.find({ 
       courseId: req.params.courseId,
-      date: { $gte: new Date() }
+      date: { $gte: startOfToday }
     }).sort({ date: 1 });
     
     res.json(sessions);
   } catch (error) {
+    console.error('[BACKEND] GET doubt sessions by course error:', error);
     res.status(500).json({ error: 'Failed to fetch doubt sessions' });
   }
 });
