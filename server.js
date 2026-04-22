@@ -28,6 +28,16 @@ const allowedOrigins = [
 
 app.use(cors({
   origin: function (origin, callback) {
+    // Allow all origins in development mode or if the origin is a local network IP
+    const isLocalOrigin = origin?.startsWith('http://localhost') || 
+                         origin?.startsWith('http://127.0.0.1') || 
+                         origin?.startsWith('http://10.') || 
+                         origin?.startsWith('http://192.168.');
+
+    if (!isProd || isLocalOrigin) {
+      return callback(null, true);
+    }
+    // Restrict to allowedOrigins in production
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
@@ -132,5 +142,21 @@ const startServer = async () => {
     process.exit(1);
   }
 };
+
+
+// ── GLOBAL UNEXPECTED ERROR HANDLERS ─────────────────────────────────
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 UNHANDLED REJECTION! Shutting down...');
+  console.error(reason);
+  // Give the server a second to log properly before exiting
+  setTimeout(() => process.exit(1), 1000);
+});
+
+process.on('uncaughtException', (err) => {
+  console.error('💥 UNCAUGHT EXCEPTION! Shutting down...');
+  console.error(err.name, err.message);
+  console.error(err.stack);
+  process.exit(1);
+});
 
 startServer();
