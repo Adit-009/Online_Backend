@@ -110,21 +110,22 @@ router.post('/enroll', async (req, res) => {
     const refreshToken = generateRefreshToken(user._id);
     setAuthCookies(res, accessToken, refreshToken);
 
-    // Send email to admin
+    // Send emails in parallel (don't block the response)
     const adminEmail = process.env.ADMIN_EMAIL || process.env.SENDER_EMAIL || 'adit80226@gmail.com';
     const wpPhone = whatsappPhone || phone;
-    await sendEmail(
-      adminEmail,
-      'New Course Enrollment',
-      emailTemplates.adminEnrollmentNotification(name, email, phone, wpPhone, address, course.title, studyCentre)
-    );
-
-    // Send email to student
-    await sendEmail(
-      email,
-      'Admission Request Received',
-      emailTemplates.studentAdmissionReceived(name)
-    );
+    
+    Promise.allSettled([
+      sendEmail(
+        adminEmail,
+        'New Course Enrollment',
+        emailTemplates.adminEnrollmentNotification(name, email, phone, wpPhone, address, course.title, studyCentre)
+      ),
+      sendEmail(
+        email,
+        'Admission Request Received',
+        emailTemplates.studentAdmissionReceived(name)
+      )
+    ]).catch(err => console.error('Background email error:', err));
 
     res.status(201).json({
       message: 'Enrollment submitted successfully. We will contact you soon.',
@@ -181,26 +182,25 @@ router.post('/enroll-loggedin', authMiddleware, async (req, res) => {
       status: 'pending'
     });
 
-    // Send email to admin
-    const user = await User.findById(req.user._id);
+    // Send emails in parallel (don't block the response)
     const adminEmail = process.env.ADMIN_EMAIL || process.env.SENDER_EMAIL || 'adit80226@gmail.com';
-    await sendEmail(
-      adminEmail,
-      'New Course Enrollment',
-      emailTemplates.adminEnrollmentNotification(
-        user.name, user.email, user.phone, 
-        user.whatsappPhone || user.phone, 
-        user.address, course.title,
-        user.studyCentre
+    Promise.allSettled([
+      sendEmail(
+        adminEmail,
+        'New Course Enrollment',
+        emailTemplates.adminEnrollmentNotification(
+          req.user.name, req.user.email, req.user.phone, 
+          req.user.whatsappPhone || req.user.phone, 
+          req.user.address, course.title,
+          req.user.studyCentre
+        )
+      ),
+      sendEmail(
+        req.user.email,
+        'Admission Request Received',
+        emailTemplates.studentAdmissionReceived(req.user.name)
       )
-    );
-
-    // Send email to student
-    await sendEmail(
-      user.email,
-      'Admission Request Received',
-      emailTemplates.studentAdmissionReceived(user.name)
-    );
+    ]).catch(err => console.error('Background email error:', err));
 
     res.status(201).json({
       message: 'Enrollment submitted successfully. We will contact you soon.',

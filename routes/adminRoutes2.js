@@ -30,9 +30,15 @@ router.post('/exams', async (req, res) => {
   try {
     const exam = await Exam.create(req.body);
     const enrollments = await Enrollment.find({ courseId: req.body.courseId, examEligible: true }).populate('userId');
-    for (const enrollment of enrollments) {
-      await sendEmail(enrollment.userId.email, 'New Exam Scheduled', emailTemplates.examReminder(enrollment.userId.name, exam.title, exam.date, exam.time, exam.venue));
-    }
+    // Send emails in parallel (don't block the response)
+    const emailPromises = enrollments.map(enrollment => 
+      sendEmail(
+        enrollment.userId.email, 
+        'New Exam Scheduled', 
+        emailTemplates.examReminder(enrollment.userId.name, exam.title, exam.date, exam.time, exam.venue)
+      )
+    );
+    Promise.allSettled(emailPromises).catch(err => console.error('Exam notification error:', err));
     res.status(201).json(exam);
   } catch (error) {
     res.status(500).json({ error: 'Failed to create exam' });
@@ -85,8 +91,16 @@ router.get('/students', async (req, res) => {
                                       .populate('courseId', 'title')
                                       .lean();
     
+    // Group enrollments by userId for O(1) lookup
+    const enrollmentMap = {};
+    enrollments.forEach(e => {
+      const uid = e.userId.toString();
+      if (!enrollmentMap[uid]) enrollmentMap[uid] = [];
+      enrollmentMap[uid].push(e);
+    });
+    
     const enrichedStudents = students.map(student => {
-      const studentEnrollments = enrollments.filter(e => e.userId.toString() === student._id.toString());
+      const studentEnrollments = enrollmentMap[student._id.toString()] || [];
       
       let totalProgress = 0;
       let courseNames = [];
@@ -101,11 +115,11 @@ router.get('/students', async (req, res) => {
       
       const msPerDay = 1000 * 60 * 60 * 24;
       const referenceDate = student.lastActiveDate ? new Date(student.lastActiveDate) : new Date(student.createdAt);
-      const daysInactive = Math.max(0, Math.floor((new Date() - referenceDate) / msPerDay));
+      const daysInactive = Math.floor((new Date() - referenceDate) / msPerDay);
       
       let activityStatus = 'Active';
-      if (daysInactive > 3) activityStatus = 'Inactive';
-      else if (daysInactive >= 2) activityStatus = 'Warning';
+      if (daysInactive >= 3) activityStatus = 'Inactive';
+      else if (daysInactive >= 1) activityStatus = 'Warning';
 
       return {
         ...student,
@@ -537,15 +551,17 @@ router.post('/doubt-sessions', async (req, res) => {
     
     // Notify all enrolled students
     const enrollments = await Enrollment.find({ courseId: req.body.courseId }).populate('userId');
-    for (const enrollment of enrollments) {
-      if (enrollment.userId && enrollment.userId.email) {
-        await sendEmail(
+    // Send emails in parallel (don't block the response)
+    const emailPromises = enrollments
+      .filter(enrollment => enrollment.userId && enrollment.userId.email)
+      .map(enrollment => 
+        sendEmail(
           enrollment.userId.email, 
           'New Doubt Session Scheduled', 
           `Hi ${enrollment.userId.name}, a new doubt session has been scheduled for your course "${course.title}".\n\nDate: ${new Date(session.date).toLocaleDateString()}\nTime: ${session.time}\nVenue: ${session.venue}`
-        );
-      }
-    }
+        )
+      );
+    Promise.allSettled(emailPromises).catch(err => console.error('Doubt session notification error:', err));
     
     res.status(201).json(session);
   } catch (error) {
