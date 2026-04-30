@@ -1,3 +1,5 @@
+const path = require('path');
+require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 const nodemailer = require('nodemailer');
 
 // Configure Gmail SMTP Transporter
@@ -122,4 +124,14 @@ const emailTemplates = {
   adminNotification: (name, email, courseTitle) => emailTemplates.adminEnrollmentNotification(name, email, 'N/A', 'N/A', 'N/A', courseTitle)
 };
 
+
+// # 1. Check if the env vars are actually set
+console.log(process.env.GMAIL_USER)   //should print your email
+console.log(process.env.GMAIL_PASS)  // should print the app password
+
+// # 2. Add transporter.verify() to test the connection on startup
+transporter.verify((error, success) => {
+  if (error) console.log('SMTP Error:', error)
+  else console.log('SMTP Ready ✅')
+})
 module.exports = { sendEmail, emailTemplates };
