@@ -21,10 +21,10 @@ const getTransporter = () => {
   console.log('[EMAIL CONFIG] ✅ Creating Gmail SMTP transporter for:', gmailUser);
 
   transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false, // Use STARTTLS
-    family: 4,     // FORCE IPv4
+    service: 'gmail',
+    family: 4, 
+    connectionTimeout: 10000, // 10 second timeout
+    greetingTimeout: 10000,
     logger: true,
     debug: true,
     auth: {
