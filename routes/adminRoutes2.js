@@ -29,19 +29,6 @@ router.get('/exams', async (req, res) => {
 router.post('/exams', async (req, res) => {
   try {
     const exam = await Exam.create(req.body);
-    const enrollments = await Enrollment.find({ courseId: req.body.courseId, examEligible: true }).populate('userId');
-    // Send emails in parallel (don't block the response)
-    const emailPromises = enrollments.map(enrollment => 
-      sendEmail(
-        enrollment.userId.email, 
-        'New Exam Scheduled', 
-        emailTemplates.examReminder(enrollment.userId.name, exam.title, exam.date, exam.time, exam.venue)
-      )
-    );
-    Promise.allSettled(emailPromises).then(results => {
-      const failed = results.filter(r => r.status === 'rejected');
-      if (failed.length > 0) console.error(`${failed.length} Exam emails failed to send`);
-    }).catch(err => console.error('Exam notification error:', err));
     res.status(201).json(exam);
   } catch (error) {
     res.status(500).json({ error: 'Failed to create exam' });
@@ -551,23 +538,6 @@ router.post('/doubt-sessions', async (req, res) => {
   try {
     const session = await DoubtSession.create(req.body);
     const course = await Course.findById(req.body.courseId);
-    
-    // Notify all enrolled students
-    const enrollments = await Enrollment.find({ courseId: req.body.courseId }).populate('userId');
-    // Send emails in parallel (don't block the response)
-    const emailPromises = enrollments
-      .filter(enrollment => enrollment.userId && enrollment.userId.email)
-      .map(enrollment => 
-        sendEmail(
-          enrollment.userId.email, 
-          'New Doubt Session Scheduled', 
-          `Hi ${enrollment.userId.name}, a new doubt session has been scheduled for your course "${course.title}".\n\nDate: ${new Date(session.date).toLocaleDateString()}\nTime: ${session.time}\nVenue: ${session.venue}`
-        )
-      );
-    Promise.allSettled(emailPromises).then(results => {
-      const failed = results.filter(r => r.status === 'rejected');
-      if (failed.length > 0) console.error(`${failed.length} Doubt session emails failed to send`);
-    }).catch(err => console.error('Doubt session notification error:', err));
     
     res.status(201).json(session);
   } catch (error) {

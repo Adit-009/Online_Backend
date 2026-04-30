@@ -110,28 +110,6 @@ router.post('/enroll', async (req, res) => {
     const refreshToken = generateRefreshToken(user._id);
     setAuthCookies(res, accessToken, refreshToken);
 
-    // Send emails in parallel (don't block the response)
-    const adminEmail = process.env.ADMIN_EMAIL || process.env.SENDER_EMAIL || 'adit80226@gmail.com';
-    const wpPhone = whatsappPhone || phone;
-    
-    // Send emails in background (Non-blocking for UI responsiveness)
-    Promise.allSettled([
-      sendEmail(
-        adminEmail,
-        'New Course Enrollment',
-        emailTemplates.adminEnrollmentNotification(name, email, phone, wpPhone, address, course.title, studyCentre)
-      ),
-      sendEmail(
-        email,
-        'Admission Request Received',
-        emailTemplates.studentAdmissionReceived(name)
-      )
-    ]).then(results => {
-      results.forEach((res, i) => {
-        if (res.status === 'rejected') console.error(`Email ${i} failed:`, res.reason);
-      });
-    }).catch(err => console.error('Background email error:', err));
-
     res.status(201).json({
       message: 'Enrollment submitted successfully. We will contact you soon.',
       enrollment,
@@ -186,31 +164,6 @@ router.post('/enroll-loggedin', authMiddleware, async (req, res) => {
       courseId,
       status: 'pending'
     });
-
-    // Send emails in parallel (don't block the response)
-    const adminEmail = process.env.ADMIN_EMAIL || process.env.SENDER_EMAIL || 'adit80226@gmail.com';
-    // Send emails in background
-    Promise.allSettled([
-      sendEmail(
-        adminEmail,
-        'New Course Enrollment',
-        emailTemplates.adminEnrollmentNotification(
-          req.user.name, req.user.email, req.user.phone, 
-          req.user.whatsappPhone || req.user.phone, 
-          req.user.address, course.title,
-          req.user.studyCentre
-        )
-      ),
-      sendEmail(
-        req.user.email,
-        'Admission Request Received',
-        emailTemplates.studentAdmissionReceived(req.user.name)
-      )
-    ]).then(results => {
-      results.forEach((res, i) => {
-        if (res.status === 'rejected') console.error(`Email ${i} failed:`, res.reason);
-      });
-    }).catch(err => console.error('Background email error:', err));
 
     res.status(201).json({
       message: 'Enrollment submitted successfully. We will contact you soon.',
