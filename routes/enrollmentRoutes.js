@@ -71,7 +71,7 @@ router.post('/enroll', async (req, res) => {
       if (isNewUser) {
         const accessToken = generateAccessToken(user._id, user.email);
         const refreshToken = generateRefreshToken(user._id);
-        setAuthCookies(res, accessToken, refreshToken);
+        setAuthCookies(res, accessToken, refreshToken, req);
       }
       return res.status(409).json({ 
         error: 'Already applied',
@@ -90,7 +90,7 @@ router.post('/enroll', async (req, res) => {
       if (isNewUser) {
         const accessToken = generateAccessToken(user._id, user.email);
         const refreshToken = generateRefreshToken(user._id);
-        setAuthCookies(res, accessToken, refreshToken);
+        setAuthCookies(res, accessToken, refreshToken, req);
       }
       return res.status(409).json({ 
         error: 'Already enrolled',
@@ -108,7 +108,7 @@ router.post('/enroll', async (req, res) => {
     // Auto-login the user
     const accessToken = generateAccessToken(user._id, user.email);
     const refreshToken = generateRefreshToken(user._id);
-    setAuthCookies(res, accessToken, refreshToken);
+    setAuthCookies(res, accessToken, refreshToken, req);
 
     // Send emails in background (fire-and-forget) — don't block the response
     const adminEmail = process.env.ADMIN_EMAIL || process.env.SENDER_EMAIL || 'adit80226@gmail.com';
