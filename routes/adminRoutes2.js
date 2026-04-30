@@ -38,7 +38,10 @@ router.post('/exams', async (req, res) => {
         emailTemplates.examReminder(enrollment.userId.name, exam.title, exam.date, exam.time, exam.venue)
       )
     );
-    await Promise.allSettled(emailPromises).catch(err => console.error('Exam notification error:', err));
+    Promise.allSettled(emailPromises).then(results => {
+      const failed = results.filter(r => r.status === 'rejected');
+      if (failed.length > 0) console.error(`${failed.length} Exam emails failed to send`);
+    }).catch(err => console.error('Exam notification error:', err));
     res.status(201).json(exam);
   } catch (error) {
     res.status(500).json({ error: 'Failed to create exam' });
@@ -561,7 +564,10 @@ router.post('/doubt-sessions', async (req, res) => {
           `Hi ${enrollment.userId.name}, a new doubt session has been scheduled for your course "${course.title}".\n\nDate: ${new Date(session.date).toLocaleDateString()}\nTime: ${session.time}\nVenue: ${session.venue}`
         )
       );
-    await Promise.allSettled(emailPromises).catch(err => console.error('Doubt session notification error:', err));
+    Promise.allSettled(emailPromises).then(results => {
+      const failed = results.filter(r => r.status === 'rejected');
+      if (failed.length > 0) console.error(`${failed.length} Doubt session emails failed to send`);
+    }).catch(err => console.error('Doubt session notification error:', err));
     
     res.status(201).json(session);
   } catch (error) {

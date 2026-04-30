@@ -140,11 +140,8 @@ router.post('/:examId/book', authMiddleware, async (req, res) => {
     await exam.save();
     const user = await User.findById(req.user._id);
     if (user && user.email) {
-      try {
-        await sendEmail(user.email, 'Exam Booking Confirmation', emailTemplates.examReminder(user.name, exam.title, exam.date, exam.time, exam.venue));
-      } catch (emailErr) {
-        console.error('Failed to send booking email:', emailErr);
-      }
+      sendEmail(user.email, 'Exam Booking Confirmation', emailTemplates.examReminder(user.name, exam.title, exam.date, exam.time, exam.venue))
+        .catch(emailErr => console.error('Failed to send booking email:', emailErr));
     }
     res.json({ message: 'Exam booked successfully', exam });
   } catch (error) {

@@ -114,8 +114,8 @@ router.post('/enroll', async (req, res) => {
     const adminEmail = process.env.ADMIN_EMAIL || process.env.SENDER_EMAIL || 'adit80226@gmail.com';
     const wpPhone = whatsappPhone || phone;
     
-    // Wait for emails to be sent (Reliable for all hosting environments)
-    await Promise.allSettled([
+    // Send emails in background (Non-blocking for UI responsiveness)
+    Promise.allSettled([
       sendEmail(
         adminEmail,
         'New Course Enrollment',
@@ -126,7 +126,11 @@ router.post('/enroll', async (req, res) => {
         'Admission Request Received',
         emailTemplates.studentAdmissionReceived(name)
       )
-    ]).catch(err => console.error('Background email error:', err));
+    ]).then(results => {
+      results.forEach((res, i) => {
+        if (res.status === 'rejected') console.error(`Email ${i} failed:`, res.reason);
+      });
+    }).catch(err => console.error('Background email error:', err));
 
     res.status(201).json({
       message: 'Enrollment submitted successfully. We will contact you soon.',
@@ -185,8 +189,8 @@ router.post('/enroll-loggedin', authMiddleware, async (req, res) => {
 
     // Send emails in parallel (don't block the response)
     const adminEmail = process.env.ADMIN_EMAIL || process.env.SENDER_EMAIL || 'adit80226@gmail.com';
-    // Wait for emails to be sent
-    await Promise.allSettled([
+    // Send emails in background
+    Promise.allSettled([
       sendEmail(
         adminEmail,
         'New Course Enrollment',
@@ -202,7 +206,11 @@ router.post('/enroll-loggedin', authMiddleware, async (req, res) => {
         'Admission Request Received',
         emailTemplates.studentAdmissionReceived(req.user.name)
       )
-    ]).catch(err => console.error('Background email error:', err));
+    ]).then(results => {
+      results.forEach((res, i) => {
+        if (res.status === 'rejected') console.error(`Email ${i} failed:`, res.reason);
+      });
+    }).catch(err => console.error('Background email error:', err));
 
     res.status(201).json({
       message: 'Enrollment submitted successfully. We will contact you soon.',

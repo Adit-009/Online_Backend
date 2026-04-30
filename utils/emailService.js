@@ -3,15 +3,18 @@ const nodemailer = require('nodemailer');
 // Configure Gmail SMTP Transporter
 const transporter = nodemailer.createTransport({
   service: 'gmail',
-  pool: true, // Use pooling for multiple emails
+  pool: true, 
   maxConnections: 5,
   maxMessages: 100,
+  connectionTimeout: 10000, // 10 seconds
+  greetingTimeout: 10000,
+  socketTimeout: 10000,
   auth: {
     user: process.env.GMAIL_USER,
     pass: process.env.GMAIL_PASS
   },
   tls: {
-    rejectUnauthorized: false // Helps with some network environments
+    rejectUnauthorized: false
   }
 });
 
