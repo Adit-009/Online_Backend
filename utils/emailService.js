@@ -21,15 +21,13 @@ const getTransporter = () => {
   console.log('[EMAIL CONFIG] ✅ Creating Gmail SMTP transporter for:', gmailUser);
 
   transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com',
-    port: 587,
-    secure: false, // Use STARTTLS (true for 465, false for 587)
+    service: 'gmail',
     auth: {
       user: gmailUser,
       pass: gmailPass
     },
     tls: {
-      rejectUnauthorized: false // Helps with connection reliability on some networks
+      rejectUnauthorized: false
     }
   });
 
@@ -156,7 +154,7 @@ const emailTemplates = {
       <p>Please ensure you are present 15 minutes before the scheduled time.</p>
     </div>
   `,
-  
+
   // Generic doubt session (can be used manually or in future routes)
   doubtSessionAnnouncement: (name, sessionTitle, date, time, venue) => `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
