@@ -8,11 +8,11 @@
     "dev": "nodemon server.js"
   },
   "_moduleAliases": {
-    "@config":     "config",
+    "@config": "config",
     "@middleware": "middleware",
-    "@models":     "models",
-    "@routes":     "routes",
-    "@utils":      "utils"
+    "@models": "models",
+    "@routes": "routes",
+    "@utils": "utils"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
@@ -31,7 +31,7 @@
     "nodemailer": "^8.0.5",
     "pdfkit": "^0.14.0",
     "qrcode": "^1.5.3",
-    "resend": "^3.0.0"
+    "resend": "^3.5.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

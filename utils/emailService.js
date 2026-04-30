@@ -1,111 +1,65 @@
-const nodemailer = require('nodemailer');
+/**
+ * 📧 Resend Email Service
+ * This service replaces Nodemailer to avoid SMTP connection timeouts on Render.
+ * It uses the Resend HTTP API which is faster and more reliable.
+ */
+const { Resend } = require('resend');
 
-// Lazy-initialized transporter (created on first use, not at import time)
-// This ensures environment variables are fully loaded by dotenv before we read them.
-let transporter = null;
-let transporterVerified = false;
+// Initialize Resend with API Key
+const resend = new Resend(process.env.RESEND_API_KEY);
 
-const getTransporter = () => {
-  if (transporter) return transporter;
-
-  const gmailUser = process.env.GMAIL_USER;
-  const gmailPass = process.env.GMAIL_PASS;
-
-  if (!gmailUser || !gmailPass) {
-    console.error('[EMAIL CONFIG] ❌ GMAIL_USER or GMAIL_PASS not set in environment variables!');
-    console.error('[EMAIL CONFIG]    GMAIL_USER:', gmailUser ? '✅ set' : '❌ missing');
-    console.error('[EMAIL CONFIG]    GMAIL_PASS:', gmailPass ? '✅ set' : '❌ missing');
-    return null;
-  }
-
-  console.log('[EMAIL CONFIG] ✅ Creating Gmail SMTP transporter for:', gmailUser);
-
-  transporter = nodemailer.createTransport({
-    service: 'gmail',
-    family: 4, 
-    connectionTimeout: 10000, // 10 second timeout
-    greetingTimeout: 10000,
-    logger: true,
-    debug: true,
-    auth: {
-      user: gmailUser,
-      pass: gmailPass
-    },
-    tls: {
-      rejectUnauthorized: false
+/**
+ * Sends an email using Resend API
+ * @param {string} to - Recipient email address
+ * @param {string} subject - Email subject
+ * @param {string} html - HTML body content
+ * @returns {Promise<{success: boolean, messageId: string}>}
+ */
+const sendEmail = async (to, subject, html) => {
+  try {
+    // 1. Validation
+    if (!process.env.RESEND_API_KEY) {
+      console.error('[RESEND] ❌ API Key is missing! Please set RESEND_API_KEY in .env or Render dashboard.');
+      throw new Error('RESEND_API_KEY not configured');
     }
-  });
 
-  // Verify credentials in background (non-blocking)
-  transporter.verify()
-    .then(() => {
-      transporterVerified = true;
-      console.log('[EMAIL CONFIG] ✅ Gmail SMTP transporter verified — ready to send emails');
-    })
-    .catch((err) => {
-      transporterVerified = false;
-      console.error('[EMAIL CONFIG] ❌ Gmail SMTP verification FAILED:', err.message);
-      console.error('[EMAIL CONFIG]    Possible causes:');
-      console.error('[EMAIL CONFIG]    1. App Password is incorrect or expired');
-      console.error('[EMAIL CONFIG]    2. 2-Step Verification is not enabled on the Gmail account');
-      console.error('[EMAIL CONFIG]    3. The App Password was revoked');
-      console.error('[EMAIL CONFIG]    → Go to https://myaccount.google.com/apppasswords to generate a new one');
+    if (!to) {
+      console.error('[RESEND] ❌ Recipient (to) is missing.');
+      throw new Error('Email recipient is required');
+    }
+
+    console.log(`[RESEND] 📤 Sending "${subject}" to ${to}...`);
+
+    // 2. Dispatch via Resend
+    // Note: We use the verified domain email provided: admin@thirdeyenagaonkathiatoli.in
+    const { data, error } = await resend.emails.send({
+      from: 'Third Eye Computer Education <admin@thirdeyenagaonkathiatoli.in>',
+      to: [to],
+      subject: subject,
+      html: html,
     });
 
-  return transporter;
+    // 3. Handle Errors from API
+    if (error) {
+      console.error(`[RESEND ERROR] ❌ API reported failure:`, error.message);
+      throw new Error(error.message);
+    }
+
+    // 4. Success
+    console.log(`[RESEND] ✅ Successfully sent! Message ID: ${data.id}`);
+    return { success: true, messageId: data.id };
+
+  } catch (err) {
+    console.error(`[RESEND ERROR] ❌ Critical failure sending email:`, err.message);
+    throw err; // Re-throw to allow .catch() in routes to handle it
+  }
 };
 
 /**
- * Utility to send emails via Gmail SMTP
- * @param {string} to - Recipient email
- * @param {string} subject - Email subject
- * @param {string} html - HTML content of the email
- * @throws {Error} if email sending fails (so fire-and-forget .catch() handlers get triggered)
+ * HTML Email Templates
+ * DO NOT MODIFY these templates as they are used across the application.
  */
-const sendEmail = async (to, subject, html) => {
-  const tp = getTransporter();
-
-  if (!tp) {
-    const errMsg = 'Email transporter not available — check GMAIL_USER and GMAIL_PASS env vars';
-    console.error(`[EMAIL ERROR] ${errMsg}`);
-    throw new Error(errMsg);
-  }
-
-  const mailOptions = {
-    from: `"Third Eye Computer Education" <${process.env.GMAIL_USER}>`,
-    to,
-    subject,
-    html
-  };
-
-  console.log(`[EMAIL] Sending "${subject}" to ${to}...`);
-
-  try {
-    const info = await tp.sendMail(mailOptions);
-    console.log(`[EMAIL] ✅ Sent "${subject}" to ${to} — messageId: ${info.messageId}`);
-    return { success: true, data: info };
-  } catch (error) {
-    console.error(`[EMAIL ERROR] ❌ Failed to send "${subject}" to ${to}:`, error.message);
-    if (error.responseCode === 535) {
-      console.error('[EMAIL ERROR]    → Authentication failed. Your App Password may be expired or incorrect.');
-      console.error('[EMAIL ERROR]    → Go to https://myaccount.google.com/apppasswords to generate a new one.');
-    }
-    // THROW instead of returning { success: false } so .catch() handlers in routes get triggered
-    throw error;
-  }
-};
-
 const emailTemplates = {
-  // Used in enrollmentRoutes.js
-  studentAdmissionReceived: (name) => `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-      <h2 style="color: #22C55E; text-align: center;">Admission Request Received</h2>
-      <p>Dear ${name},</p>
-      <p>Thank you for your interest in Third Eye Computer Education. Your admission request has been received successfully. Our team will reach out to you shortly with further details.</p>
-      <p>Best Regards,<br>The Third Eye Team</p>
-    </div>
-  `,
-
   // Used in enrollmentRoutes.js
   adminEnrollmentNotification: (name, email, phone, wpPhone, address, courseTitle, studyCentre) => {
     const safeWpPhone = String(wpPhone || '');
@@ -131,13 +85,28 @@ const emailTemplates = {
     `;
   },
 
-  // Used in adminRoutes2.js (Approval callback - if any) or for active students
-  enrollmentSuccess: (name, courseTitle) => `
+  // Used in enrollmentRoutes.js
+  studentAdmissionReceived: (name) => `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-      <h2 style="color: #22C55E; text-align: center;">Enrollment Approved!</h2>
+      <h2 style="color: #22C55E;">Admission Request Received</h2>
       <p>Dear ${name},</p>
-      <p>Congratulations! Your enrollment in <strong>${courseTitle}</strong> has been approved.</p>
-      <p>You now have full access to all course materials and videos.</p>
+      <p>Thank you for your interest in Third Eye Computer Education! We have received your admission request.</p>
+      <p>Our team will review your application and contact you shortly with the next steps.</p>
+      <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border-left: 4px solid #22C55E;">
+        <p style="margin: 0;"><strong>What's next?</strong> We will verify your details and send you an approval notification once processed.</p>
+      </div>
+      <p>If you have any urgent queries, feel free to contact us.</p>
+      <p>Best Regards,<br/><strong>Third Eye Computer Education Team</strong></p>
+    </div>
+  `,
+
+  // Used when admin approves enrollment
+  enrollmentApproved: (name, courseTitle) => `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+      <h2 style="color: #22C55E;">Admission Approved! 🎉</h2>
+      <p>Dear ${name},</p>
+      <p>Congratulations! Your admission for the course <strong>${courseTitle}</strong> has been approved.</p>
+      <p>You can now log in to your dashboard to access your course materials, videos, and upcoming exams.</p>
       <div style="text-align: center; margin: 30px 0;">
         <a href="${process.env.FRONTEND_URL}/dashboard" style="background: #22C55E; color: white; padding: 12px 25px; text-decoration: none; border-radius: 8px; font-weight: bold;">Go to Dashboard</a>
       </div>
@@ -163,22 +132,18 @@ const emailTemplates = {
   // Generic doubt session (can be used manually or in future routes)
   doubtSessionAnnouncement: (name, sessionTitle, date, time, venue) => `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-      <h2 style="color: #22C55E;">New Doubt Session Scheduled</h2>
+      <h2 style="color: #22C55E;">Doubt Clearing Session</h2>
       <p>Dear ${name},</p>
-      <p>A new offline doubt solving session has been scheduled:</p>
+      <p>A new doubt clearing session has been scheduled:</p>
       <div style="background: #f9f9f9; padding: 15px; border-radius: 8px;">
-        <p><strong>Session:</strong> ${sessionTitle}</p>
+        <p><strong>Topic:</strong> ${sessionTitle}</p>
         <p><strong>Date:</strong> ${new Date(date).toLocaleDateString()}</p>
         <p><strong>Time:</strong> ${time}</p>
         <p><strong>Venue:</strong> ${venue}</p>
       </div>
-      <p>Attendance is optional but recommended.</p>
+      <p>Come prepared with your questions!</p>
     </div>
-  `,
-
-  // Legacy/Alias support
-  welcome: (name) => emailTemplates.studentAdmissionReceived(name),
-  adminNotification: (name, email, courseTitle) => emailTemplates.adminEnrollmentNotification(name, email, 'N/A', 'N/A', 'N/A', courseTitle)
+  `
 };
 
 module.exports = { sendEmail, emailTemplates };
