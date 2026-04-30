@@ -103,6 +103,39 @@ app.get('/api/health', (req, res) => {
   }
 });
 
+// ── TEST EMAIL (for debugging — remove after confirming emails work) ──
+app.get('/api/test-email', async (req, res) => {
+  try {
+    const { sendEmail } = require('@utils/emailService');
+    const testTo = process.env.ADMIN_EMAIL || process.env.GMAIL_USER;
+    console.log('[TEST EMAIL] Attempting to send test email to:', testTo);
+    
+    const result = await sendEmail(
+      testTo,
+      'Test Email — Third Eye Platform',
+      `<div style="font-family: Arial; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+        <h2 style="color: #22C55E;">✅ Email is working!</h2>
+        <p>This is a test email from your Third Eye Education Platform backend.</p>
+        <p>Sent at: ${new Date().toISOString()}</p>
+        <p>Environment: ${process.env.NODE_ENV || 'development'}</p>
+      </div>`
+    );
+    
+    res.json({ 
+      success: true, 
+      message: `Test email sent to ${testTo}`,
+      messageId: result?.data?.messageId 
+    });
+  } catch (error) {
+    console.error('[TEST EMAIL] Failed:', error.message);
+    res.status(500).json({ 
+      success: false, 
+      error: error.message,
+      hint: 'Check GMAIL_USER and GMAIL_PASS in your .env / Render environment variables'
+    });
+  }
+});
+
 // ── SERVE FRONTEND (PRODUCTION) ───────────────────────────────────────
 const frontendBuildPath = path.join(__dirname, '../frontend/build');
 app.use(express.static(frontendBuildPath));

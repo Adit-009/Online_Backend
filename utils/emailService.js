@@ -1,36 +1,89 @@
 const nodemailer = require('nodemailer');
 
-// Configure Gmail SMTP Transporter
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_PASS
+// Lazy-initialized transporter (created on first use, not at import time)
+// This ensures environment variables are fully loaded by dotenv before we read them.
+let transporter = null;
+let transporterVerified = false;
+
+const getTransporter = () => {
+  if (transporter) return transporter;
+
+  const gmailUser = process.env.GMAIL_USER;
+  const gmailPass = process.env.GMAIL_PASS;
+
+  if (!gmailUser || !gmailPass) {
+    console.error('[EMAIL CONFIG] ❌ GMAIL_USER or GMAIL_PASS not set in environment variables!');
+    console.error('[EMAIL CONFIG]    GMAIL_USER:', gmailUser ? '✅ set' : '❌ missing');
+    console.error('[EMAIL CONFIG]    GMAIL_PASS:', gmailPass ? '✅ set' : '❌ missing');
+    return null;
   }
-});
+
+  console.log('[EMAIL CONFIG] ✅ Creating Gmail SMTP transporter for:', gmailUser);
+
+  transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: gmailUser,
+      pass: gmailPass
+    }
+  });
+
+  // Verify credentials in background (non-blocking)
+  transporter.verify()
+    .then(() => {
+      transporterVerified = true;
+      console.log('[EMAIL CONFIG] ✅ Gmail SMTP transporter verified — ready to send emails');
+    })
+    .catch((err) => {
+      transporterVerified = false;
+      console.error('[EMAIL CONFIG] ❌ Gmail SMTP verification FAILED:', err.message);
+      console.error('[EMAIL CONFIG]    Possible causes:');
+      console.error('[EMAIL CONFIG]    1. App Password is incorrect or expired');
+      console.error('[EMAIL CONFIG]    2. 2-Step Verification is not enabled on the Gmail account');
+      console.error('[EMAIL CONFIG]    3. The App Password was revoked');
+      console.error('[EMAIL CONFIG]    → Go to https://myaccount.google.com/apppasswords to generate a new one');
+    });
+
+  return transporter;
+};
 
 /**
  * Utility to send emails via Gmail SMTP
  * @param {string} to - Recipient email
  * @param {string} subject - Email subject
  * @param {string} html - HTML content of the email
+ * @throws {Error} if email sending fails (so fire-and-forget .catch() handlers get triggered)
  */
 const sendEmail = async (to, subject, html) => {
-  try {
-    
-    const mailOptions = {
-      from: `"Third Eye Computer Education" <${process.env.GMAIL_USER}>`,
-      to,
-      subject,
-      html
-    };
+  const tp = getTransporter();
 
-    const info = await transporter.sendMail(mailOptions);
-    
+  if (!tp) {
+    const errMsg = 'Email transporter not available — check GMAIL_USER and GMAIL_PASS env vars';
+    console.error(`[EMAIL ERROR] ${errMsg}`);
+    throw new Error(errMsg);
+  }
+
+  const mailOptions = {
+    from: `"Third Eye Computer Education" <${process.env.GMAIL_USER}>`,
+    to,
+    subject,
+    html
+  };
+
+  console.log(`[EMAIL] Sending "${subject}" to ${to}...`);
+
+  try {
+    const info = await tp.sendMail(mailOptions);
+    console.log(`[EMAIL] ✅ Sent "${subject}" to ${to} — messageId: ${info.messageId}`);
     return { success: true, data: info };
   } catch (error) {
-    console.error('[EMAIL ERROR] Gmail SMTP failed:', error);
-    return { success: false, error: error.message };
+    console.error(`[EMAIL ERROR] ❌ Failed to send "${subject}" to ${to}:`, error.message);
+    if (error.responseCode === 535) {
+      console.error('[EMAIL ERROR]    → Authentication failed. Your App Password may be expired or incorrect.');
+      console.error('[EMAIL ERROR]    → Go to https://myaccount.google.com/apppasswords to generate a new one.');
+    }
+    // THROW instead of returning { success: false } so .catch() handlers in routes get triggered
+    throw error;
   }
 };
 
