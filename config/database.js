@@ -55,9 +55,11 @@ const createIndexes = async () => {
 
     // Check if models are available (prevents circular dependency issues during startup)
     if (User && User.collection) {
-      // The User model already defines unique constraints via schema (email, phone).
-      // Only create performance-oriented indexes here, not unique constraints.
-      await User.collection.createIndex({ email: 1 }, { background: true }).catch(() => {});
+      // First, try to drop the old unique email index if it exists to avoid conflicts
+      try { await User.collection.dropIndex('email_1'); } catch (e) { /* ignore if not exists */ }
+
+      // Create compound index for email + role to allow duplicate emails across different roles
+      await User.collection.createIndex({ email: 1, role: 1 }, { unique: true });
     }
     if (Enrollment && Enrollment.collection) {
       await Enrollment.collection.createIndex({ userId: 1, courseId: 1 });
