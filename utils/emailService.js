@@ -100,7 +100,8 @@ const emailTemplates = {
 
   // Used in enrollmentRoutes.js
   adminEnrollmentNotification: (name, email, phone, wpPhone, address, courseTitle, studyCentre) => {
-    const safeWpPhone = wpPhone || '';
+    const safeWpPhone = String(wpPhone || '');
+    const cleanWpPhone = safeWpPhone.replace(/\D/g, '');
     return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
       <h2 style="color: #22C55E;">New Enrollment Request</h2>
@@ -115,7 +116,7 @@ const emailTemplates = {
         <p><strong>Study Centre:</strong> ${studyCentre || 'Not Specified'}</p>
       </div>
       <div style="text-align: center; margin: 20px 0;">
-        <a href="https://wa.me/${safeWpPhone.replace(/\D/g, '')}" style="background: #25D366; color: white; padding: 12px 25px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Chat on WhatsApp</a>
+        <a href="https://wa.me/${cleanWpPhone}" style="background: #25D366; color: white; padding: 12px 25px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Chat on WhatsApp</a>
       </div>
       <p>Please log in to the admin panel to approve or reject this request.</p>
     </div>

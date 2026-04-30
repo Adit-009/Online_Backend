@@ -113,17 +113,22 @@ router.post('/enroll', async (req, res) => {
     // Send emails in background (fire-and-forget) — don't block the response
     const adminEmail = process.env.ADMIN_EMAIL || process.env.SENDER_EMAIL || 'adit80226@gmail.com';
     const wpPhone = whatsappPhone || phone;
+    
+    console.log(`[ENROLL] Dispatching emails for ${email} (Course: ${course.title})`);
+
+    // Admin Notification
     sendEmail(
       adminEmail,
       'New Course Enrollment',
       emailTemplates.adminEnrollmentNotification(name, email, phone, wpPhone, address, course.title, studyCentre)
-    ).catch(err => console.error('Admin enrollment email failed:', err.message));
+    ).catch(err => console.error(`[ENROLL ERROR] Admin email failed for ${email}:`, err.message));
 
+    // Student Confirmation
     sendEmail(
       email,
       'Admission Request Received',
       emailTemplates.studentAdmissionReceived(name)
-    ).catch(err => console.error('Student enrollment email failed:', err.message));
+    ).catch(err => console.error(`[ENROLL ERROR] Student email failed for ${email}:`, err.message));
 
     res.status(201).json({
       message: 'Enrollment submitted successfully. We will contact you soon.',
@@ -184,6 +189,9 @@ router.post('/enroll-loggedin', authMiddleware, async (req, res) => {
     // Send emails in background (fire-and-forget)
     const user = await User.findById(req.user._id);
     const adminEmail = process.env.ADMIN_EMAIL || process.env.SENDER_EMAIL || 'adit80226@gmail.com';
+    
+    console.log(`[ENROLL-AUTH] Dispatching emails for ${user.email} (Course: ${course.title})`);
+
     sendEmail(
       adminEmail,
       'New Course Enrollment',
@@ -193,13 +201,13 @@ router.post('/enroll-loggedin', authMiddleware, async (req, res) => {
         user.address, course.title,
         user.studyCentre
       )
-    ).catch(err => console.error('Admin enrollment email failed:', err.message));
+    ).catch(err => console.error(`[ENROLL-AUTH ERROR] Admin email failed for ${user.email}:`, err.message));
 
     sendEmail(
       user.email,
       'Admission Request Received',
       emailTemplates.studentAdmissionReceived(user.name)
-    ).catch(err => console.error('Student enrollment email failed:', err.message));
+    ).catch(err => console.error(`[ENROLL-AUTH ERROR] Student email failed for ${user.email}:`, err.message));
 
     res.status(201).json({
       message: 'Enrollment submitted successfully. We will contact you soon.',
