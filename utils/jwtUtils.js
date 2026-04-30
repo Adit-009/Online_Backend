@@ -17,18 +17,11 @@ const generateRefreshToken = (userId) => {
   );
 };
 
-const setAuthCookies = (res, accessToken, refreshToken, req) => {
-  // Smarter production detection: 
-  // If we are on localhost, we use lax/non-secure for development convenience.
-  // If we are on a real domain (like Render), we MUST use none/secure for cross-site cookies.
-  const isLocalhost = req.hostname === 'localhost' || req.hostname === '127.0.0.1';
-  const useSecure = isProd || !isLocalhost;
-  const sameSite = (isProd || !isLocalhost) ? 'none' : 'lax';
-
+const setAuthCookies = (res, accessToken, refreshToken) => {
   const cookieOpts = (maxAge) => ({
     httpOnly: true,
-    secure: useSecure,
-    sameSite: sameSite,
+    secure: isProd,              // true on Render (HTTPS), false locally
+    sameSite: isProd ? 'none' : 'lax', // 'none' required for cross-origin on HTTPS
     maxAge,
     path: '/'
   });
@@ -37,12 +30,8 @@ const setAuthCookies = (res, accessToken, refreshToken, req) => {
   res.cookie('refresh_token', refreshToken, cookieOpts(7 * 24 * 60 * 60 * 1000));
 };
 
-const clearAuthCookies = (res, req) => {
-  const isLocalhost = req?.hostname === 'localhost' || req?.hostname === '127.0.0.1';
-  const useSecure = isProd || !isLocalhost;
-  const sameSite = (isProd || !isLocalhost) ? 'none' : 'lax';
-  
-  const clearOpts = { path: '/', httpOnly: true, secure: useSecure, sameSite: sameSite };
+const clearAuthCookies = (res) => {
+  const clearOpts = { path: '/', httpOnly: true, secure: isProd, sameSite: isProd ? 'none' : 'lax' };
   res.clearCookie('access_token',  clearOpts);
   res.clearCookie('refresh_token', clearOpts);
 };

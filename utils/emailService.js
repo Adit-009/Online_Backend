@@ -1,69 +1,53 @@
-/**
- * 📧 Resend Email Service
- * This service replaces Nodemailer to avoid SMTP connection timeouts on Render.
- * It uses the Resend HTTP API which is faster and more reliable.
- */
-const { Resend } = require('resend');
+const nodemailer = require('nodemailer');
 
-// Initialize Resend with API Key
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Configure Gmail SMTP Transporter
+const transporter = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.GMAIL_USER,
+    pass: process.env.GMAIL_PASS
+  }
+});
 
 /**
- * Sends an email using Resend API
- * @param {string} to - Recipient email address
+ * Utility to send emails via Gmail SMTP
+ * @param {string} to - Recipient email
  * @param {string} subject - Email subject
- * @param {string} html - HTML body content
- * @returns {Promise<{success: boolean, messageId: string}>}
+ * @param {string} html - HTML content of the email
  */
 const sendEmail = async (to, subject, html) => {
   try {
-    // 1. Validation
-    if (!process.env.RESEND_API_KEY) {
-      console.error('[RESEND] ❌ API Key is missing! Please set RESEND_API_KEY in .env or Render dashboard.');
-      throw new Error('RESEND_API_KEY not configured');
-    }
+    
+    const mailOptions = {
+      from: `"Third Eye Computer Education" <${process.env.GMAIL_USER}>`,
+      to,
+      subject,
+      html
+    };
 
-    if (!to) {
-      console.error('[RESEND] ❌ Recipient (to) is missing.');
-      throw new Error('Email recipient is required');
-    }
-
-    console.log(`[RESEND] 📤 Sending "${subject}" to ${to}...`);
-
-    // 2. Dispatch via Resend
-    // Note: We use the verified domain email provided: admin@thirdeyenagaonkathiatoli.in
-    const { data, error } = await resend.emails.send({
-      from: 'Third Eye Computer Education <admin@thirdeyenagaonkathiatoli.in>',
-      to: [to],
-      subject: subject,
-      html: html,
-    });
-
-    // 3. Handle Errors from API
-    if (error) {
-      console.error(`[RESEND ERROR] ❌ API reported failure:`, error.message);
-      throw new Error(error.message);
-    }
-
-    // 4. Success
-    console.log(`[RESEND] ✅ Successfully sent! Message ID: ${data.id}`);
-    return { success: true, messageId: data.id };
-
-  } catch (err) {
-    console.error(`[RESEND ERROR] ❌ Critical failure sending email:`, err.message);
-    throw err; // Re-throw to allow .catch() in routes to handle it
+    const info = await transporter.sendMail(mailOptions);
+    
+    return { success: true, data: info };
+  } catch (error) {
+    console.error('[EMAIL ERROR] Gmail SMTP failed:', error);
+    return { success: false, error: error.message };
   }
 };
 
-/**
- * HTML Email Templates
- * DO NOT MODIFY these templates as they are used across the application.
- */
 const emailTemplates = {
   // Used in enrollmentRoutes.js
+  studentAdmissionReceived: (name) => `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+      <h2 style="color: #22C55E; text-align: center;">Admission Request Received</h2>
+      <p>Dear ${name},</p>
+      <p>Thank you for your interest in Third Eye Computer Education. Your admission request has been received successfully. Our team will reach out to you shortly with further details.</p>
+      <p>Best Regards,<br>The Third Eye Team</p>
+    </div>
+  `,
+
+  // Used in enrollmentRoutes.js
   adminEnrollmentNotification: (name, email, phone, wpPhone, address, courseTitle, studyCentre) => {
-    const safeWpPhone = String(wpPhone || '');
-    const cleanWpPhone = safeWpPhone.replace(/\D/g, '');
+    const safeWpPhone = wpPhone || '';
     return `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
       <h2 style="color: #22C55E;">New Enrollment Request</h2>
@@ -78,35 +62,20 @@ const emailTemplates = {
         <p><strong>Study Centre:</strong> ${studyCentre || 'Not Specified'}</p>
       </div>
       <div style="text-align: center; margin: 20px 0;">
-        <a href="https://wa.me/${cleanWpPhone}" style="background: #25D366; color: white; padding: 12px 25px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Chat on WhatsApp</a>
+        <a href="https://wa.me/${safeWpPhone.replace(/\D/g, '')}" style="background: #25D366; color: white; padding: 12px 25px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Chat on WhatsApp</a>
       </div>
       <p>Please log in to the admin panel to approve or reject this request.</p>
     </div>
     `;
   },
 
-  // Used in enrollmentRoutes.js
-  studentAdmissionReceived: (name) => `
+  // Used in adminRoutes2.js (Approval callback - if any) or for active students
+  enrollmentSuccess: (name, courseTitle) => `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-      <h2 style="color: #22C55E;">Admission Request Received</h2>
+      <h2 style="color: #22C55E; text-align: center;">Enrollment Approved!</h2>
       <p>Dear ${name},</p>
-      <p>Thank you for your interest in Third Eye Computer Education! We have received your admission request.</p>
-      <p>Our team will review your application and contact you shortly with the next steps.</p>
-      <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; border-left: 4px solid #22C55E;">
-        <p style="margin: 0;"><strong>What's next?</strong> We will verify your details and send you an approval notification once processed.</p>
-      </div>
-      <p>If you have any urgent queries, feel free to contact us.</p>
-      <p>Best Regards,<br/><strong>Third Eye Computer Education Team</strong></p>
-    </div>
-  `,
-
-  // Used when admin approves enrollment
-  enrollmentApproved: (name, courseTitle) => `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-      <h2 style="color: #22C55E;">Admission Approved! 🎉</h2>
-      <p>Dear ${name},</p>
-      <p>Congratulations! Your admission for the course <strong>${courseTitle}</strong> has been approved.</p>
-      <p>You can now log in to your dashboard to access your course materials, videos, and upcoming exams.</p>
+      <p>Congratulations! Your enrollment in <strong>${courseTitle}</strong> has been approved.</p>
+      <p>You now have full access to all course materials and videos.</p>
       <div style="text-align: center; margin: 30px 0;">
         <a href="${process.env.FRONTEND_URL}/dashboard" style="background: #22C55E; color: white; padding: 12px 25px; text-decoration: none; border-radius: 8px; font-weight: bold;">Go to Dashboard</a>
       </div>
@@ -128,22 +97,26 @@ const emailTemplates = {
       <p>Please ensure you are present 15 minutes before the scheduled time.</p>
     </div>
   `,
-
+  
   // Generic doubt session (can be used manually or in future routes)
   doubtSessionAnnouncement: (name, sessionTitle, date, time, venue) => `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-      <h2 style="color: #22C55E;">Doubt Clearing Session</h2>
+      <h2 style="color: #22C55E;">New Doubt Session Scheduled</h2>
       <p>Dear ${name},</p>
-      <p>A new doubt clearing session has been scheduled:</p>
+      <p>A new offline doubt solving session has been scheduled:</p>
       <div style="background: #f9f9f9; padding: 15px; border-radius: 8px;">
-        <p><strong>Topic:</strong> ${sessionTitle}</p>
+        <p><strong>Session:</strong> ${sessionTitle}</p>
         <p><strong>Date:</strong> ${new Date(date).toLocaleDateString()}</p>
         <p><strong>Time:</strong> ${time}</p>
         <p><strong>Venue:</strong> ${venue}</p>
       </div>
-      <p>Come prepared with your questions!</p>
+      <p>Attendance is optional but recommended.</p>
     </div>
-  `
+  `,
+
+  // Legacy/Alias support
+  welcome: (name) => emailTemplates.studentAdmissionReceived(name),
+  adminNotification: (name, email, courseTitle) => emailTemplates.adminEnrollmentNotification(name, email, 'N/A', 'N/A', 'N/A', courseTitle)
 };
 
 module.exports = { sendEmail, emailTemplates };

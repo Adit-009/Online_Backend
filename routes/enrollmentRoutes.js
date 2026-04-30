@@ -71,7 +71,7 @@ router.post('/enroll', async (req, res) => {
       if (isNewUser) {
         const accessToken = generateAccessToken(user._id, user.email);
         const refreshToken = generateRefreshToken(user._id);
-        setAuthCookies(res, accessToken, refreshToken, req);
+        setAuthCookies(res, accessToken, refreshToken);
       }
       return res.status(409).json({ 
         error: 'Already applied',
@@ -90,7 +90,7 @@ router.post('/enroll', async (req, res) => {
       if (isNewUser) {
         const accessToken = generateAccessToken(user._id, user.email);
         const refreshToken = generateRefreshToken(user._id);
-        setAuthCookies(res, accessToken, refreshToken, req);
+        setAuthCookies(res, accessToken, refreshToken);
       }
       return res.status(409).json({ 
         error: 'Already enrolled',
@@ -108,27 +108,23 @@ router.post('/enroll', async (req, res) => {
     // Auto-login the user
     const accessToken = generateAccessToken(user._id, user.email);
     const refreshToken = generateRefreshToken(user._id);
-    setAuthCookies(res, accessToken, refreshToken, req);
+    setAuthCookies(res, accessToken, refreshToken);
 
-    // Send emails in background (fire-and-forget) — don't block the response
+    // Send email to admin
     const adminEmail = process.env.ADMIN_EMAIL || process.env.SENDER_EMAIL || 'adit80226@gmail.com';
     const wpPhone = whatsappPhone || phone;
-    
-    console.log(`[ENROLL] Dispatching emails for ${email} (Course: ${course.title})`);
-
-    // Admin Notification
-    sendEmail(
+    await sendEmail(
       adminEmail,
       'New Course Enrollment',
       emailTemplates.adminEnrollmentNotification(name, email, phone, wpPhone, address, course.title, studyCentre)
-    ).catch(err => console.error(`[ENROLL ERROR] Admin email failed for ${email}:`, err.message));
+    );
 
-    // Student Confirmation
-    sendEmail(
+    // Send email to student
+    await sendEmail(
       email,
       'Admission Request Received',
       emailTemplates.studentAdmissionReceived(name)
-    ).catch(err => console.error(`[ENROLL ERROR] Student email failed for ${email}:`, err.message));
+    );
 
     res.status(201).json({
       message: 'Enrollment submitted successfully. We will contact you soon.',
@@ -144,10 +140,9 @@ router.post('/enroll', async (req, res) => {
   } catch (error) {
     console.error('Enrollment error:', error);
     if (error.code === 11000) {
-      const field = error.keyPattern?.email ? 'Email' : error.keyPattern?.phone ? 'Phone number' : 'Account';
-      return res.status(409).json({ error: `${field} already registered. Please login instead.` });
+      return res.status(400).json({ error: 'Email already registered. Please login instead.' });
     }
-    res.status(500).json({ error: 'Enrollment failed. Please try again.' });
+    res.status(500).json({ error: 'Enrollment failed. Please try again.', details: error.message, stack: error.stack });
   }
 });
 
@@ -186,13 +181,10 @@ router.post('/enroll-loggedin', authMiddleware, async (req, res) => {
       status: 'pending'
     });
 
-    // Send emails in background (fire-and-forget)
+    // Send email to admin
     const user = await User.findById(req.user._id);
     const adminEmail = process.env.ADMIN_EMAIL || process.env.SENDER_EMAIL || 'adit80226@gmail.com';
-    
-    console.log(`[ENROLL-AUTH] Dispatching emails for ${user.email} (Course: ${course.title})`);
-
-    sendEmail(
+    await sendEmail(
       adminEmail,
       'New Course Enrollment',
       emailTemplates.adminEnrollmentNotification(
@@ -201,13 +193,14 @@ router.post('/enroll-loggedin', authMiddleware, async (req, res) => {
         user.address, course.title,
         user.studyCentre
       )
-    ).catch(err => console.error(`[ENROLL-AUTH ERROR] Admin email failed for ${user.email}:`, err.message));
+    );
 
-    sendEmail(
+    // Send email to student
+    await sendEmail(
       user.email,
       'Admission Request Received',
       emailTemplates.studentAdmissionReceived(user.name)
-    ).catch(err => console.error(`[ENROLL-AUTH ERROR] Student email failed for ${user.email}:`, err.message));
+    );
 
     res.status(201).json({
       message: 'Enrollment submitted successfully. We will contact you soon.',

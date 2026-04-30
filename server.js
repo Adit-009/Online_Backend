@@ -103,42 +103,6 @@ app.get('/api/health', (req, res) => {
   }
 });
 
-// ── TEST EMAIL (for debugging — remove after confirming emails work) ──
-app.get('/api/test-email', async (req, res) => {
-  try {
-    const { sendEmail, emailTemplates } = require('@utils/emailService');
-    const testTo = process.env.ADMIN_EMAIL || process.env.GMAIL_USER;
-    
-    console.log(`[TEST-EMAIL] Sending full template test to ${testTo}...`);
-    
-    const testHtml = emailTemplates.adminEnrollmentNotification(
-      'Test Student', 
-      'student@test.com', 
-      '1234567890', 
-      '1234567890', 
-      '123 Test St, Test City', 
-      'Full Stack Web Development', 
-      'Nagaon'
-    );
-
-    const info = await sendEmail(testTo, 'Enrollment Template Test', testHtml);
-    
-    res.json({ 
-      success: true, 
-      message: 'Test enrollment email sent successfully!', 
-      recipient: testTo,
-      messageId: info.messageId 
-    });
-  } catch (err) {
-    console.error('[TEST-EMAIL ERROR]:', err);
-    res.status(500).json({ 
-      success: false, 
-      error: err.message,
-      hint: 'Check your Gmail App Password and ensure GMAIL_USER is correct in Render dashboard.' 
-    });
-  }
-});
-
 // ── SERVE FRONTEND (PRODUCTION) ───────────────────────────────────────
 const frontendBuildPath = path.join(__dirname, '../frontend/build');
 app.use(express.static(frontendBuildPath));

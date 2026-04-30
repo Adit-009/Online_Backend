@@ -60,7 +60,7 @@ router.post('/register', async (req, res) => {
     const accessToken = generateAccessToken(user._id, user.email);
     const refreshToken = generateRefreshToken(user._id);
 
-    setAuthCookies(res, accessToken, refreshToken, req);
+    setAuthCookies(res, accessToken, refreshToken);
 
     // Track registration (initial login)
     await trackActivity(user._id, 'login', null, 'User registered and logged in');
@@ -108,7 +108,7 @@ router.post('/login', async (req, res) => {
     const accessToken = generateAccessToken(user._id, user.email);
     const refreshToken = generateRefreshToken(user._id);
 
-    setAuthCookies(res, accessToken, refreshToken, req);
+    setAuthCookies(res, accessToken, refreshToken);
 
     // Track login activity
     await trackActivity(user._id, 'login', null, 'User logged in');
@@ -141,7 +141,7 @@ router.get('/me', authMiddleware, async (req, res) => {
 
 // Logout
 router.post('/logout', authMiddleware, (req, res) => {
-  clearAuthCookies(res, req);
+  clearAuthCookies(res);
   res.json({ message: 'Logged out successfully' });
 });
 
