@@ -106,32 +106,35 @@ app.get('/api/health', (req, res) => {
 // ── TEST EMAIL (for debugging — remove after confirming emails work) ──
 app.get('/api/test-email', async (req, res) => {
   try {
-    const { sendEmail } = require('@utils/emailService');
+    const { sendEmail, emailTemplates } = require('@utils/emailService');
     const testTo = process.env.ADMIN_EMAIL || process.env.GMAIL_USER;
-    console.log('[TEST EMAIL] Attempting to send test email to:', testTo);
     
-    const result = await sendEmail(
-      testTo,
-      'Test Email — Third Eye Platform',
-      `<div style="font-family: Arial; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
-        <h2 style="color: #22C55E;">✅ Email is working!</h2>
-        <p>This is a test email from your Third Eye Education Platform backend.</p>
-        <p>Sent at: ${new Date().toISOString()}</p>
-        <p>Environment: ${process.env.NODE_ENV || 'development'}</p>
-      </div>`
+    console.log(`[TEST-EMAIL] Sending full template test to ${testTo}...`);
+    
+    const testHtml = emailTemplates.adminEnrollmentNotification(
+      'Test Student', 
+      'student@test.com', 
+      '1234567890', 
+      '1234567890', 
+      '123 Test St, Test City', 
+      'Full Stack Web Development', 
+      'Nagaon'
     );
+
+    const info = await sendEmail(testTo, 'Enrollment Template Test', testHtml);
     
     res.json({ 
       success: true, 
-      message: `Test email sent to ${testTo}`,
-      messageId: result?.data?.messageId 
+      message: 'Test enrollment email sent successfully!', 
+      recipient: testTo,
+      messageId: info.messageId 
     });
-  } catch (error) {
-    console.error('[TEST EMAIL] Failed:', error.message);
+  } catch (err) {
+    console.error('[TEST-EMAIL ERROR]:', err);
     res.status(500).json({ 
       success: false, 
-      error: error.message,
-      hint: 'Check GMAIL_USER and GMAIL_PASS in your .env / Render environment variables'
+      error: err.message,
+      hint: 'Check your Gmail App Password and ensure GMAIL_USER is correct in Render dashboard.' 
     });
   }
 });
