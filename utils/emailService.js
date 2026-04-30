@@ -125,10 +125,6 @@ const emailTemplates = {
 };
 
 
-// # 1. Check if the env vars are actually set
-console.log(process.env.GMAIL_USER)   //should print your email
-console.log(process.env.GMAIL_PASS)  // should print the app password
-
 // # 2. Add transporter.verify() to test the connection on startup
 transporter.verify((error, success) => {
   if (error) console.log('SMTP Error:', error)
