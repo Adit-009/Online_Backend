@@ -114,7 +114,8 @@ router.post('/enroll', async (req, res) => {
     const adminEmail = process.env.ADMIN_EMAIL || process.env.SENDER_EMAIL || 'adit80226@gmail.com';
     const wpPhone = whatsappPhone || phone;
     
-    Promise.allSettled([
+    // Wait for emails to be sent (Reliable for all hosting environments)
+    await Promise.allSettled([
       sendEmail(
         adminEmail,
         'New Course Enrollment',
@@ -184,7 +185,8 @@ router.post('/enroll-loggedin', authMiddleware, async (req, res) => {
 
     // Send emails in parallel (don't block the response)
     const adminEmail = process.env.ADMIN_EMAIL || process.env.SENDER_EMAIL || 'adit80226@gmail.com';
-    Promise.allSettled([
+    // Wait for emails to be sent
+    await Promise.allSettled([
       sendEmail(
         adminEmail,
         'New Course Enrollment',
