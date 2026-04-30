@@ -24,6 +24,9 @@ const getTransporter = () => {
     host: 'smtp.gmail.com',
     port: 587,
     secure: false, // Use STARTTLS
+    family: 4,     // FORCE IPv4
+    logger: true,
+    debug: true,
     auth: {
       user: gmailUser,
       pass: gmailPass
