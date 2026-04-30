@@ -110,21 +110,20 @@ router.post('/enroll', async (req, res) => {
     const refreshToken = generateRefreshToken(user._id);
     setAuthCookies(res, accessToken, refreshToken);
 
-    // Send email to admin
+    // Send emails in background (fire-and-forget) — don't block the response
     const adminEmail = process.env.ADMIN_EMAIL || process.env.SENDER_EMAIL || 'adit80226@gmail.com';
     const wpPhone = whatsappPhone || phone;
-    await sendEmail(
+    sendEmail(
       adminEmail,
       'New Course Enrollment',
       emailTemplates.adminEnrollmentNotification(name, email, phone, wpPhone, address, course.title, studyCentre)
-    );
+    ).catch(err => console.error('Admin enrollment email failed:', err.message));
 
-    // Send email to student
-    await sendEmail(
+    sendEmail(
       email,
       'Admission Request Received',
       emailTemplates.studentAdmissionReceived(name)
-    );
+    ).catch(err => console.error('Student enrollment email failed:', err.message));
 
     res.status(201).json({
       message: 'Enrollment submitted successfully. We will contact you soon.',
@@ -140,9 +139,10 @@ router.post('/enroll', async (req, res) => {
   } catch (error) {
     console.error('Enrollment error:', error);
     if (error.code === 11000) {
-      return res.status(400).json({ error: 'Email already registered. Please login instead.' });
+      const field = error.keyPattern?.email ? 'Email' : error.keyPattern?.phone ? 'Phone number' : 'Account';
+      return res.status(409).json({ error: `${field} already registered. Please login instead.` });
     }
-    res.status(500).json({ error: 'Enrollment failed. Please try again.', details: error.message, stack: error.stack });
+    res.status(500).json({ error: 'Enrollment failed. Please try again.' });
   }
 });
 
@@ -181,10 +181,10 @@ router.post('/enroll-loggedin', authMiddleware, async (req, res) => {
       status: 'pending'
     });
 
-    // Send email to admin
+    // Send emails in background (fire-and-forget)
     const user = await User.findById(req.user._id);
     const adminEmail = process.env.ADMIN_EMAIL || process.env.SENDER_EMAIL || 'adit80226@gmail.com';
-    await sendEmail(
+    sendEmail(
       adminEmail,
       'New Course Enrollment',
       emailTemplates.adminEnrollmentNotification(
@@ -193,14 +193,13 @@ router.post('/enroll-loggedin', authMiddleware, async (req, res) => {
         user.address, course.title,
         user.studyCentre
       )
-    );
+    ).catch(err => console.error('Admin enrollment email failed:', err.message));
 
-    // Send email to student
-    await sendEmail(
+    sendEmail(
       user.email,
       'Admission Request Received',
       emailTemplates.studentAdmissionReceived(user.name)
-    );
+    ).catch(err => console.error('Student enrollment email failed:', err.message));
 
     res.status(201).json({
       message: 'Enrollment submitted successfully. We will contact you soon.',
