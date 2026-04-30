@@ -2,20 +2,16 @@ const nodemailer = require('nodemailer');
 
 // Configure Gmail SMTP Transporter
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  pool: true, 
-  maxConnections: 5,
-  maxMessages: 100,
-  connectionTimeout: 10000, // 10 seconds
-  greetingTimeout: 10000,
-  socketTimeout: 10000,
+  host: 'smtp.gmail.com',   // explicit host instead of service: 'gmail'
+  port: 587,                // 587 = STARTTLS (most reliable, rarely blocked)
+  secure: false,            // false for port 587; true only for port 465
+  requireTLS: true,         // forces TLS upgrade — fixes timeout on most servers
   auth: {
     user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_PASS
-  },
-  tls: {
-    rejectUnauthorized: false
+    pass: process.env.GMAIL_PASS  // must be a Google App Password, not your Gmail password
   }
+  // Removed: service, pool, maxConnections, maxMessages, timeout overrides, tls.rejectUnauthorized
+  // pool:true + Gmail = unreliable; rejectUnauthorized:false = security risk
 });
 
 /**
@@ -26,7 +22,6 @@ const transporter = nodemailer.createTransport({
  */
 const sendEmail = async (to, subject, html) => {
   try {
-    
     const mailOptions = {
       from: `"Third Eye Computer Education" <${process.env.GMAIL_USER}>`,
       to,
@@ -35,7 +30,6 @@ const sendEmail = async (to, subject, html) => {
     };
 
     const info = await transporter.sendMail(mailOptions);
-    
     return { success: true, data: info };
   } catch (error) {
     console.error('[EMAIL ERROR] Gmail SMTP failed:', error);
@@ -106,7 +100,7 @@ const emailTemplates = {
       <p>Please ensure you are present 15 minutes before the scheduled time.</p>
     </div>
   `,
-  
+
   // Generic doubt session (can be used manually or in future routes)
   doubtSessionAnnouncement: (name, sessionTitle, date, time, venue) => `
     <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
