@@ -56,7 +56,7 @@ router.get('/eligibility/:courseId', authMiddleware, async (req, res) => {
 router.get('/available', authMiddleware, async (req, res) => {
   try {
     // Only show exams for courses where the student has an approved (paid) enrollment
-    const enrollments = await Enrollment.find({ userId: req.user._id, status: 'paid' }).populate('courseId', 'title');
+    const enrollments = await Enrollment.find({ userId: req.user._id, status: 'paid' }).populate('courseId', 'title minDaysBeforeExam minProgress');
     const validEnrollments = enrollments.filter(e => e.courseId);
     const courseIds = validEnrollments.map(e => e.courseId._id);
     const exams = await Exam.find({ courseId: { $in: courseIds } }).populate('courseId').sort({ date: 1 });

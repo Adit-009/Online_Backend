@@ -189,7 +189,7 @@ router.put('/enrollments/:id/pay', async (req, res) => {
     if (!enrollment) return res.status(404).json({ error: 'Enrollment not found' });
     
     enrollment.status = 'paid';
-    enrollment.examEligible = true;
+    enrollment.examEligible = false; // Reset to false; student must earn it via progress/time
     await enrollment.save();
 
     // Reward the referrer if one exists
@@ -527,7 +527,7 @@ router.post('/enroll-student', async (req, res) => {
       userId: studentId, 
       courseId, 
       status: 'paid', 
-      examEligible: true, 
+      examEligible: false, // Student must earn it or be manually toggled later
       progress: 0,
       paymentStatus: paymentStatus || 'pending'
     });
