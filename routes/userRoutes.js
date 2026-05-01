@@ -3,6 +3,8 @@ const router      = express.Router();
 const User        = require('@models/User');
 const Enrollment  = require('@models/Enrollment');
 const ActivityLog = require('@models/ActivityLog');
+const Exam        = require('@models/Exam');
+const DoubtSession = require('@models/DoubtSession');
 const { authMiddleware }       = require('@middleware/authMiddleware');
 const { generateReferralCode } = require('@utils/referralUtils');
 
@@ -103,6 +105,43 @@ router.get('/dashboard', authMiddleware, async (req, res) => {
 
     const successfulReferrals = enrichedReferredUsers.filter(u => u.isRewarded).length;
 
+    // --- SMOOTH EXPERIENCE: Pre-calculate counts for badges ---
+    // Exams: Filtered by course and eligibility
+    const approvedCourseIds = enrollments.filter(e => e.status === 'paid').map(e => e.courseId?._id);
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const availableExams = await Exam.find({ 
+      courseId: { $in: approvedCourseIds },
+      date: { $gte: startOfToday }
+    }).lean();
+
+    const pendingExamsCount = availableExams.filter(exam => {
+      const isBooked = (exam.enrolledStudents || []).some(s => s.userId.toString() === userId.toString());
+      if (isBooked) return false;
+      
+      const enrollment = enrollments.find(e => e.courseId?._id.toString() === exam.courseId.toString());
+      if (!enrollment) return false;
+
+      // Logic from examRoutes.js
+      const enrolledAt = new Date(enrollment.enrolledAt);
+      const daysPassed = Math.floor((new Date() - enrolledAt) / (1000 * 60 * 60 * 24));
+      const minDaysBeforeExam = enrollment.courseId?.minDaysBeforeExam || 30;
+      const minProgress = enrollment.courseId?.minProgress || 80;
+      
+      return enrollment.examEligible || enrollment.adminOverride || (daysPassed >= minDaysBeforeExam && enrollment.progress >= minProgress);
+    }).length;
+
+    // Doubt Sessions
+    const availableSessions = await DoubtSession.find({
+      courseId: { $in: approvedCourseIds },
+      date: { $gte: startOfToday }
+    }).lean();
+
+    const pendingSessionsCount = availableSessions.filter(session => {
+      return !(session.participants || []).some(p => p.toString() === userId.toString());
+    }).length;
+
     res.json({
       user,
       enrollments,
@@ -111,6 +150,10 @@ router.get('/dashboard', authMiddleware, async (req, res) => {
         referredCount,
         successfulReferrals,
         referredUsers: enrichedReferredUsers
+      },
+      badges: {
+        exams: pendingExamsCount,
+        doubtSessions: pendingSessionsCount
       }
     });
   } catch (error) {
