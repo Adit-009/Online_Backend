@@ -7,7 +7,6 @@ const ActivityLog  = require('@models/ActivityLog');
 const Exam         = require('@models/Exam');
 const DoubtSession = require('@models/DoubtSession');
 const { authMiddleware, adminMiddleware }          = require('@middleware/authMiddleware');
-const { sendEmail, emailTemplates }               = require('@utils/emailService');
 const { generateReferralCode, processReferralReward } = require('@utils/referralUtils');
 
 // Apply auth and admin middleware to all routes
@@ -77,7 +76,7 @@ router.get('/students', async (req, res) => {
   try {
     const students = await User.find({ role: 'student' }).select('-password').sort({ createdAt: -1 }).lean();
     const enrollments = await Enrollment.find({ userId: { $in: students.map(s => s._id) } })
-                                      .select('userId progress courseId paymentStatus')
+                                      .select('userId progress courseId paymentStatus examEligible adminOverride')
                                       .populate('courseId', 'title')
                                       .lean();
     
@@ -211,6 +210,17 @@ router.put('/enrollments/:id/override', async (req, res) => {
     res.json({ message: `Admin override ${adminOverride ? 'enabled' : 'disabled'}`, enrollment });
   } catch (error) {
     res.status(500).json({ error: 'Failed to update admin override' });
+  }
+});
+
+router.put('/enrollments/:id/eligibility', async (req, res) => {
+  try {
+    const { examEligible } = req.body;
+    const enrollment = await Enrollment.findByIdAndUpdate(req.params.id, { examEligible }, { new: true });
+    if (!enrollment) return res.status(404).json({ error: 'Enrollment not found' });
+    res.json({ message: `Exam eligibility ${examEligible ? 'enabled' : 'disabled'}`, enrollment });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update exam eligibility' });
   }
 });
 

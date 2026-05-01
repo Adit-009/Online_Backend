@@ -5,7 +5,6 @@ const Exam       = require('@models/Exam');
 const Enrollment = require('@models/Enrollment');
 const User       = require('@models/User');
 const { authMiddleware }     = require('@middleware/authMiddleware');
-const { sendEmail, emailTemplates } = require('@utils/emailService');
 
 // Get all upcoming exams for a course
 router.get('/course/:courseId', authMiddleware, async (req, res) => {
@@ -66,29 +65,14 @@ router.get('/available', authMiddleware, async (req, res) => {
       const enrollment = validEnrollments.find(e => e.courseId?._id.toString() === exam.courseId?._id.toString());
       const course = exam.courseId;
       
-      const now = new Date();
-      const enrolledAt = new Date(enrollment.enrolledAt);
-      const daysPassed = Math.floor((now - enrolledAt) / (1000 * 60 * 60 * 24));
-      
-      const minDaysBeforeExam = course.minDaysBeforeExam || 30;
-      const minProgress = course.minProgress || 80;
-      
-      const isEligible = enrollment.adminOverride || (daysPassed >= minDaysBeforeExam && enrollment.progress >= minProgress);
+      const isEligible = enrollment.examEligible || enrollment.adminOverride;
       const isBooked = exam.enrolledStudents.some(s => s.userId.toString() === req.user._id.toString());
 
       return { 
         ...exam.toObject(), 
         isEligible, 
         isBooked, 
-        courseTitle: course?.title || 'Unknown Course',
-        eligibilityDetails: {
-          daysPassed,
-          minDaysBeforeExam,
-          daysLeft: Math.max(0, minDaysBeforeExam - daysPassed),
-          currentProgress: enrollment.progress,
-          requiredProgress: minProgress,
-          adminOverride: enrollment.adminOverride
-        }
+        courseTitle: course?.title || 'Unknown Course'
       };
     }).filter(exam => exam.isEligible || exam.isBooked); // Only show exams student can actually book or has booked
     
@@ -110,28 +94,10 @@ router.post('/:examId/book', authMiddleware, async (req, res) => {
       return res.status(403).json({ error: 'You must have an approved enrollment to book this exam' });
     }
 
-    const course = exam.courseId;
-    const now = new Date();
-    const enrolledAt = new Date(enrollment.enrolledAt);
-    const daysPassed = Math.floor((now - enrolledAt) / (1000 * 60 * 60 * 24));
-    
-    const minDaysBeforeExam = course.minDaysBeforeExam || 30;
-    const minProgress = course.minProgress || 80;
-    
-    const isEligible = enrollment.adminOverride || (daysPassed >= minDaysBeforeExam && enrollment.progress >= minProgress);
+    const isEligible = enrollment.examEligible || enrollment.adminOverride;
 
     if (!isEligible) {
-      let message = 'You are not eligible to book this exam.';
-      if (!enrollment.adminOverride) {
-        if (daysPassed < minDaysBeforeExam && enrollment.progress < minProgress) {
-          message = `Exam can be booked after ${minDaysBeforeExam - daysPassed} more days and completion of ${minProgress}% progress.`;
-        } else if (daysPassed < minDaysBeforeExam) {
-          message = `Exam can be booked after ${minDaysBeforeExam - daysPassed} more days.`;
-        } else if (enrollment.progress < minProgress) {
-          message = `Complete ${minProgress}% of course to unlock exam.`;
-        }
-      }
-      return res.status(403).json({ error: message });
+      return res.status(403).json({ error: 'You are not eligible to book this exam. Please contact the administrator.' });
     }
 
     const alreadyBooked = exam.enrolledStudents.some(s => s.userId.toString() === req.user._id.toString());

@@ -7,7 +7,6 @@ const User       = require('@models/User');
 const { authMiddleware }                                     = require('@middleware/authMiddleware');
 const { generateAccessToken, generateRefreshToken,
         setAuthCookies }                                     = require('@utils/jwtUtils');
-const { sendEmail, emailTemplates }                          = require('@utils/emailService');
 
 // Public enrollment endpoint - register + enroll in one step
 router.post('/enroll', async (req, res) => {
@@ -187,7 +186,66 @@ router.get('/my-enrollments', authMiddleware, async (req, res) => {
   }
 });
 
-// Get specific enrollment
+// Download enrollment receipt (PDF)
+router.get('/download/:id', authMiddleware, async (req, res) => {
+  try {
+    const PDFDocument = require('pdfkit');
+    const enrollment = await Enrollment.findById(req.params.id)
+      .populate('userId', 'name email phone studyCentre address')
+      .populate('courseId', 'title');
+
+    if (!enrollment) {
+      return res.status(404).json({ error: 'Enrollment not found' });
+    }
+
+    // Security: Only student themselves or admin can download
+    if (req.user.role !== 'admin' && enrollment.userId._id.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: 'Unauthorized to download this receipt' });
+    }
+
+    const doc = new PDFDocument({ margin: 50 });
+    const filename = `Receipt_${enrollment._id}.pdf`;
+
+    res.setHeader('Content-disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-type', 'application/pdf');
+
+    doc.pipe(res);
+
+    // Header
+    doc.fontSize(20).text('Enrollment Receipt', { align: 'center' });
+    doc.moveDown();
+    doc.fontSize(12).text(`Date: ${new Date(enrollment.enrolledAt).toLocaleDateString()}`, { align: 'right' });
+    doc.moveDown();
+
+    // Student Info
+    doc.fontSize(14).text('Student Details', { underline: true });
+    doc.fontSize(12).text(`Name: ${enrollment.userId.name}`);
+    doc.text(`Email: ${enrollment.userId.email}`);
+    doc.text(`Phone: ${enrollment.userId.phone}`);
+    doc.text(`Study Centre: ${enrollment.userId.studyCentre}`);
+    doc.text(`Address: ${enrollment.userId.address}`);
+    doc.moveDown();
+
+    // Course Info
+    doc.fontSize(14).text('Course Details', { underline: true });
+    doc.fontSize(12).text(`Course: ${enrollment.courseId.title}`);
+    doc.text(`Enrollment ID: ${enrollment._id}`);
+    doc.text(`Status: ${enrollment.status.toUpperCase()}`);
+    doc.text(`Payment Status: ${enrollment.paymentStatus.toUpperCase()}`);
+    doc.moveDown();
+
+    // Footer
+    doc.moveDown(5);
+    doc.fontSize(10).text('Thank you for choosing Third Eye Computer Education.', { align: 'center', color: 'gray' });
+
+    doc.end();
+  } catch (error) {
+    console.error('PDF Download Error:', error);
+    res.status(500).json({ error: 'Failed to generate PDF receipt' });
+  }
+});
+
+// Get specific enrollment for a course
 router.get('/:courseId', authMiddleware, async (req, res) => {
   try {
     const enrollment = await Enrollment.findOne({

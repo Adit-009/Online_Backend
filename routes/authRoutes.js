@@ -140,7 +140,7 @@ router.get('/me', authMiddleware, async (req, res) => {
 });
 
 // Logout
-router.post('/logout', authMiddleware, (req, res) => {
+router.post('/logout', (req, res) => {
   clearAuthCookies(res);
   res.json({ message: 'Logged out successfully' });
 });

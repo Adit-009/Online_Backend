@@ -5,7 +5,23 @@ const DoubtSession = require('@models/DoubtSession');
 const User         = require('@models/User');
 const Enrollment   = require('@models/Enrollment');
 const { authMiddleware }     = require('@middleware/authMiddleware');
-const { sendEmail, emailTemplates } = require('@utils/emailService');
+
+// Get all upcoming doubt sessions (Global)
+router.get('/available', authMiddleware, async (req, res) => {
+  try {
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
+
+    const sessions = await DoubtSession.find({ 
+      date: { $gte: startOfToday }
+    }).populate('courseId', 'title').sort({ date: 1 });
+    
+    res.json(sessions);
+  } catch (error) {
+    console.error('[BACKEND] GET available doubt sessions error:', error);
+    res.status(500).json({ error: 'Failed to fetch doubt sessions' });
+  }
+});
 
 // Get all upcoming doubt sessions for a course
 router.get('/course/:courseId', authMiddleware, async (req, res) => {
