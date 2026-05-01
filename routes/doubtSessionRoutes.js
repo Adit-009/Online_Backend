@@ -16,7 +16,13 @@ router.get('/available', authMiddleware, async (req, res) => {
       date: { $gte: startOfToday }
     }).populate('courseId', 'title').sort({ date: 1 });
     
-    res.json(sessions);
+    // Add joined status so frontend can filter badges
+    const enrichedSessions = sessions.map(session => ({
+      ...session.toObject(),
+      isJoined: session.participants.some(p => p.toString() === req.user._id.toString())
+    }));
+
+    res.json(enrichedSessions);
   } catch (error) {
     console.error('[BACKEND] GET available doubt sessions error:', error);
     res.status(500).json({ error: 'Failed to fetch doubt sessions' });
