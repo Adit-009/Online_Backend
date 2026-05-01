@@ -24,39 +24,49 @@ router.post('/enroll', async (req, res) => {
     }
 
     // Find or create user
-    let user = await User.findOne({ email: email.toLowerCase() });
-    let isNewUser = false;
-
-    if (!user) {
-      // Create new user
-      const hashedPassword = await bcrypt.hash(password, 10);
-      // Referral Logic
-      let referredByUser = null;
-      if (referralCode && referralCode.trim()) {
-        referredByUser = await User.findOne({ referralCode: referralCode.trim().toUpperCase() });
-        // Prevent self-referral
-        if (referredByUser && (referredByUser.email === email.toLowerCase() || referredByUser.phone === phone)) {
-          referredByUser = null;
-        }
-      }
-
-      const { generateReferralCode } = require('@utils/referralUtils');
-      const newReferralCode = generateReferralCode(name);
-
-      user = await User.create({
-        name,
-        email: email.toLowerCase(),
-        password: hashedPassword,
-        phone,
-        whatsappPhone: whatsappPhone || phone,
-        address,
-        studyCentre,
-        role: 'student',
-        referralCode: newReferralCode,
-        referredBy: referredByUser ? referredByUser._id : undefined
+    let user = await User.findOne({ 
+      $or: [
+        { email: email.toLowerCase() },
+        { phone: phone }
+      ]
+    });
+    
+    if (user) {
+      return res.status(409).json({ 
+        error: 'Account already exists', 
+        message: 'An account with this email or phone number already exists. Please login to your dashboard to continue your enrollment.',
+        guideToLogin: true
       });
-      isNewUser = true;
     }
+
+    // Create new user
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // Referral Logic
+    let referredByUser = null;
+    if (referralCode && referralCode.trim()) {
+      referredByUser = await User.findOne({ referralCode: referralCode.trim().toUpperCase() });
+      // Prevent self-referral
+      if (referredByUser && (referredByUser.email === email.toLowerCase() || referredByUser.phone === phone)) {
+        referredByUser = null;
+      }
+    }
+
+    const { generateReferralCode } = require('@utils/referralUtils');
+    const newReferralCode = generateReferralCode(name);
+
+    user = await User.create({
+      name,
+      email: email.toLowerCase(),
+      password: hashedPassword,
+      phone,
+      whatsappPhone: whatsappPhone || phone,
+      address,
+      studyCentre,
+      role: 'student',
+      referralCode: newReferralCode,
+      referredBy: referredByUser ? referredByUser._id : undefined
+    });
 
     // Check for duplicate pending enrollment (same user + course + pending)
     const existingEnrollment = await Enrollment.findOne({
@@ -66,12 +76,11 @@ router.post('/enroll', async (req, res) => {
     });
 
     if (existingEnrollment) {
-      // Still auto-login if new user or return cookies
-      if (isNewUser) {
-        const accessToken = generateAccessToken(user._id, user.email);
-        const refreshToken = generateRefreshToken(user._id);
-        setAuthCookies(res, accessToken, refreshToken);
-      }
+      // Auto-login newly created user
+      const accessToken = generateAccessToken(user._id, user.email);
+      const refreshToken = generateRefreshToken(user._id);
+      setAuthCookies(res, accessToken, refreshToken);
+
       return res.status(409).json({
         error: 'Already applied',
         message: 'You have already submitted an enrollment request for this course. Please wait for confirmation.'
@@ -86,11 +95,11 @@ router.post('/enroll', async (req, res) => {
     });
 
     if (paidEnrollment) {
-      if (isNewUser) {
-        const accessToken = generateAccessToken(user._id, user.email);
-        const refreshToken = generateRefreshToken(user._id);
-        setAuthCookies(res, accessToken, refreshToken);
-      }
+      // Auto-login newly created user
+      const accessToken = generateAccessToken(user._id, user.email);
+      const refreshToken = generateRefreshToken(user._id);
+      setAuthCookies(res, accessToken, refreshToken);
+
       return res.status(409).json({
         error: 'Already enrolled',
         message: 'You are already enrolled in this course.'

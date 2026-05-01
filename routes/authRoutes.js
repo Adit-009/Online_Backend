@@ -18,8 +18,11 @@ router.post('/register', async (req, res) => {
 
     const existingUser = await User.findOne({ $or: [{ email: email.toLowerCase() }, { phone }] });
     if (existingUser) {
-      const errorMsg = existingUser.email === email.toLowerCase() ? 'Email already registered' : 'Phone number already registered';
-      return res.status(400).json({ error: errorMsg });
+      return res.status(409).json({ 
+        error: 'Account already exists', 
+        message: 'An account with this email or phone number already exists. Please login to your dashboard.',
+        guideToLogin: true
+      });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
