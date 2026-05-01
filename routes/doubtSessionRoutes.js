@@ -6,13 +6,17 @@ const User         = require('@models/User');
 const Enrollment   = require('@models/Enrollment');
 const { authMiddleware }     = require('@middleware/authMiddleware');
 
-// Get all upcoming doubt sessions (Global)
 router.get('/available', authMiddleware, async (req, res) => {
   try {
     const startOfToday = new Date();
     startOfToday.setHours(0, 0, 0, 0);
 
+    // Get user's enrolled course IDs
+    const enrollments = await Enrollment.find({ userId: req.user._id, status: 'paid' });
+    const enrolledCourseIds = enrollments.map(e => e.courseId);
+
     const sessions = await DoubtSession.find({ 
+      courseId: { $in: enrolledCourseIds },
       date: { $gte: startOfToday }
     }).populate('courseId', 'title').sort({ date: 1 });
     

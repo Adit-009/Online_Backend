@@ -35,7 +35,7 @@ router.get('/eligibility/:courseId', authMiddleware, async (req, res) => {
     const minDaysBeforeExam = course.minDaysBeforeExam || 30;
     const minProgress = course.minProgress || 80;
     
-    const isEligible = enrollment.adminOverride || (daysPassed >= minDaysBeforeExam && enrollment.progress >= minProgress);
+    const isEligible = enrollment.examEligible || enrollment.adminOverride || (daysPassed >= minDaysBeforeExam && enrollment.progress >= minProgress);
     
     res.json({
       isEligible,
@@ -65,16 +65,33 @@ router.get('/available', authMiddleware, async (req, res) => {
       const enrollment = validEnrollments.find(e => e.courseId?._id.toString() === exam.courseId?._id.toString());
       const course = exam.courseId;
       
-      const isEligible = enrollment.examEligible || enrollment.adminOverride;
+      const now = new Date();
+      const enrolledAt = new Date(enrollment.enrolledAt);
+      const msPassed = now - enrolledAt;
+      const daysPassed = Math.floor(msPassed / (1000 * 60 * 60 * 24));
+      const minDaysBeforeExam = enrollment.courseId?.minDaysBeforeExam || 30;
+      const minProgress = enrollment.courseId?.minProgress || 80;
+
+      const isEligible = enrollment.examEligible || enrollment.adminOverride || (daysPassed >= minDaysBeforeExam && enrollment.progress >= minProgress);
+      
+      const eligibilityDetails = {
+        isEligible,
+        daysPassed,
+        minDaysBeforeExam,
+        daysLeft: Math.max(0, minDaysBeforeExam - daysPassed),
+        currentProgress: enrollment.progress,
+        requiredProgress: minProgress
+      };
       const isBooked = exam.enrolledStudents.some(s => s.userId.toString() === req.user._id.toString());
 
       return { 
         ...exam.toObject(), 
         isEligible, 
         isBooked, 
-        courseTitle: course?.title || 'Unknown Course'
+        courseTitle: course?.title || 'Unknown Course',
+        eligibilityDetails
       };
-    }).filter(exam => exam.isEligible || exam.isBooked); // Only show exams student can actually book or has booked
+    });
     
     res.json(availableExams);
   } catch (error) {
@@ -94,10 +111,17 @@ router.post('/:examId/book', authMiddleware, async (req, res) => {
       return res.status(403).json({ error: 'You must have an approved enrollment to book this exam' });
     }
 
-    const isEligible = enrollment.examEligible || enrollment.adminOverride;
+    const now = new Date();
+    const enrolledAt = new Date(enrollment.enrolledAt);
+    const msPassed = now - enrolledAt;
+    const daysPassed = Math.floor(msPassed / (1000 * 60 * 60 * 24));
+    const minDaysBeforeExam = exam.courseId?.minDaysBeforeExam || 30;
+    const minProgress = exam.courseId?.minProgress || 80;
+
+    const isEligible = enrollment.examEligible || enrollment.adminOverride || (daysPassed >= minDaysBeforeExam && enrollment.progress >= minProgress);
 
     if (!isEligible) {
-      return res.status(403).json({ error: 'You are not eligible to book this exam. Please contact the administrator.' });
+      return res.status(403).json({ error: 'You are not eligible to book this exam. Please complete the course requirements.' });
     }
 
     const alreadyBooked = exam.enrolledStudents.some(s => s.userId.toString() === req.user._id.toString());
