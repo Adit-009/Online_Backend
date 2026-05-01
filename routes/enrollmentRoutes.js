@@ -1,12 +1,12 @@
-const express    = require('express');
-const router     = express.Router();
-const bcrypt     = require('bcryptjs');
+const express = require('express');
+const router = express.Router();
+const bcrypt = require('bcryptjs');
 const Enrollment = require('@models/Enrollment');
-const Course     = require('@models/Course');
-const User       = require('@models/User');
-const { authMiddleware }                                     = require('@middleware/authMiddleware');
+const Course = require('@models/Course');
+const User = require('@models/User');
+const { authMiddleware } = require('@middleware/authMiddleware');
 const { generateAccessToken, generateRefreshToken,
-        setAuthCookies }                                     = require('@utils/jwtUtils');
+  setAuthCookies } = require('@utils/jwtUtils');
 
 // Public enrollment endpoint - register + enroll in one step
 router.post('/enroll', async (req, res) => {
@@ -72,7 +72,7 @@ router.post('/enroll', async (req, res) => {
         const refreshToken = generateRefreshToken(user._id);
         setAuthCookies(res, accessToken, refreshToken);
       }
-      return res.status(409).json({ 
+      return res.status(409).json({
         error: 'Already applied',
         message: 'You have already submitted an enrollment request for this course. Please wait for confirmation.'
       });
@@ -91,7 +91,7 @@ router.post('/enroll', async (req, res) => {
         const refreshToken = generateRefreshToken(user._id);
         setAuthCookies(res, accessToken, refreshToken);
       }
-      return res.status(409).json({ 
+      return res.status(409).json({
         error: 'Already enrolled',
         message: 'You are already enrolled in this course.'
       });
@@ -211,32 +211,110 @@ router.get('/download/:id', authMiddleware, async (req, res) => {
 
     doc.pipe(res);
 
-    // Header
-    doc.fontSize(20).text('Enrollment Receipt', { align: 'center' });
-    doc.moveDown();
-    doc.fontSize(12).text(`Date: ${new Date(enrollment.enrolledAt).toLocaleDateString()}`, { align: 'right' });
-    doc.moveDown();
+    // Header Banner
+    doc.rect(0, 0, doc.page.width, 80).fill('#1e3a8a');
 
-    // Student Info
-    doc.fontSize(14).text('Student Details', { underline: true });
-    doc.fontSize(12).text(`Name: ${enrollment.userId.name}`);
-    doc.text(`Email: ${enrollment.userId.email}`);
-    doc.text(`Phone: ${enrollment.userId.phone}`);
-    doc.text(`Study Centre: ${enrollment.userId.studyCentre}`);
-    doc.text(`Address: ${enrollment.userId.address}`);
-    doc.moveDown();
+    // Institute Name (Left)
+    doc
+      .fillColor('white')
+      .fontSize(20)
+      .text('Third Eye Computer Education', 50, 20);
 
-    // Course Info
-    doc.fontSize(14).text('Course Details', { underline: true });
-    doc.fontSize(12).text(`Course: ${enrollment.courseId.title}`);
-    doc.text(`Enrollment ID: ${enrollment._id}`);
-    doc.text(`Status: ${enrollment.status.toUpperCase()}`);
-    doc.text(`Payment Status: ${enrollment.paymentStatus.toUpperCase()}`);
-    doc.moveDown();
+    // Subtitle
+    doc
+      .fontSize(12)
+      .text('Enrollment Receipt', 50, 45);
 
-    // Footer
-    doc.moveDown(5);
-    doc.fontSize(10).text('Thank you for choosing Third Eye Computer Education.', { align: 'center', color: 'gray' });
+    // ✅ Certification Details (Right side - clean alignment)
+    doc
+      .fontSize(8)
+      .fillColor('white')
+      .text(
+        'ISO 9001:2015 Certified Institution\nRegistered Under the Companies Act 1956,\nMinistry of Corporate Affairs, Govt. of India\nRegistration No: U72400AS1998PTC005595',
+        300,
+        20,
+        {
+          width: 240,
+          align: 'right',
+          lineGap: 2,
+        }
+      );
+
+    // Reset color
+    doc.fillColor('black').moveDown(2);
+
+    // Date (top right)
+    doc
+      .fontSize(10)
+      .text(
+        `Date: ${new Date(enrollment.enrolledAt).toLocaleDateString()}`,
+        400,
+        90
+      );
+
+    // Divider
+    doc.moveTo(50, 110).lineTo(550, 110).stroke();
+
+    // ----------------------
+    // STUDENT SECTION
+    // ----------------------
+    doc.moveDown();
+    doc
+      .fontSize(14)
+      .fillColor('#1e3a8a')
+      .text('Student Details', 50, 130);
+
+    doc
+      .roundedRect(50, 150, 500, 110, 5)
+      .stroke();
+
+    doc
+      .fillColor('black')
+      .fontSize(11)
+      .text(`Name: ${enrollment.userId.name}`, 60, 165)
+      .text(`Email: ${enrollment.userId.email}`, 60, 185)
+      .text(`Phone: ${enrollment.userId.phone}`, 60, 205)
+      .text(`Study Centre: ${enrollment.userId.studyCentre}`, 60, 225)
+      .text(`Address: ${enrollment.userId.address}`, 60, 245);
+
+    // ----------------------
+    // COURSE SECTION
+    // ----------------------
+    doc
+      .fontSize(14)
+      .fillColor('#1e3a8a')
+      .text('Course Details', 50, 280);
+
+    doc
+      .roundedRect(50, 300, 500, 110, 5)
+      .stroke();
+
+    const getPaymentStatusLabel = (status) => {
+      const s = String(status || 'pending').toLowerCase();
+      if (s === 'paid') return 'Paid (100%)';
+      if (s === 'partial') return 'Partial (50%)';
+      return 'Pending (0%)';
+    };
+
+    doc
+      .fillColor('black')
+      .fontSize(11)
+      .text(`Course: ${enrollment.courseId.title}`, 60, 315)
+      .text(`Status: ${enrollment.status.toUpperCase()}`, 60, 355)
+      .text(`Payment Status: ${getPaymentStatusLabel(enrollment.paymentStatus)}`, 60, 375);
+
+    // ----------------------
+    // FOOTER
+    // ----------------------
+    doc
+      .fontSize(10)
+      .fillColor('gray')
+      .text(
+        'Thank you for choosing Third Eye Computer Education.',
+        50,
+        700,
+        { align: 'center' }
+      );
 
     doc.end();
   } catch (error) {
