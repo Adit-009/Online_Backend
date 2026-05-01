@@ -30,7 +30,7 @@ router.get('/dashboard', authMiddleware, async (req, res) => {
     const enrollments = await Enrollment.find({ userId })
       .populate({
         path: 'courseId',
-        select: 'title description thumbnail price duration level' // Exclude videos and mockTests to optimize response
+        select: 'title description thumbnail price duration level minDaysBeforeExam' // Exclude videos and mockTests to optimize response
       })
       .sort({ enrolledAt: -1 })
       .lean();
